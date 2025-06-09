@@ -145,6 +145,7 @@ Answer the following question based on the provided personal information.
 
 ## Rules
 - Answer questions directly.
+- Use the same language as the question.
 
 ## Example
 My resume: John Doe, born on 01/01/1990, living in Milan, Italy.
@@ -163,6 +164,7 @@ Answer the following question based on the provided personal information.
 
 ## Rules
 - Answer questions directly.
+- Use the same language as the question.
 
 ## Example
 My resume: John Doe, born on 01/01/1990, living in Milan, Italy.
@@ -179,6 +181,7 @@ Answer the following question based on the provided self-identification details.
 
 ## Rules
 - Answer questions directly.
+- Use the same language as the question.
 
 ## Example
 My resume: Male, uses he/him pronouns, not a veteran, no disability.
@@ -195,6 +198,7 @@ Answer the following question based on the provided legal authorization details.
 
 ## Rules
 - Answer questions directly.
+- Use the same language as the question.
 
 ## Example
 My resume: Authorized to work in the EU, no US visa required.
@@ -211,6 +215,7 @@ Answer the following question based on the provided work preferences.
 
 ## Rules
 - Answer questions directly.
+- Use the same language as the question.
 
 ## Example
 My resume: Open to remote work, willing to relocate.
@@ -230,6 +235,7 @@ Answer the following question based on the provided education details.
 - If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
 - If unsure, respond with "I have no experience with that, but I learn fast" or "Not yet, but willing to learn."
 - Keep the answer under 140 characters.
+- Use the same language as the question.
 
 ## Example
 My resume: Bachelor's degree in Computer Science with experience in Python.
@@ -249,6 +255,7 @@ Answer the following question based on the provided experience details.
 - If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
 - If unsure, respond with "I have no experience with that, but I learn fast" or "Not yet, but willing to learn."
 - Keep the answer under 140 characters.
+- Use the same language as the question.
 
 ## Example
 My resume: 3 years as a software developer with leadership experience.
@@ -267,6 +274,7 @@ Answer the following question based on the provided project details.
 - Answer questions directly.
 - If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
 - Keep the answer under 140 characters.
+- Use the same language as the question.
 
 ## Example
 My resume: Led the development of a mobile app, repository available.
@@ -285,6 +293,7 @@ Answer the following question based on the provided availability details.
 - Answer questions directly.
 - Keep the answer under 140 characters.
 - Use periods only if the answer has multiple sentences.
+- Use the same language as the question.
 
 ## Example
 My resume: Available to start immediately.
@@ -303,6 +312,7 @@ Answer the following question based on the provided salary expectations.
 - Answer questions directly.
 - Keep the answer under 140 characters.
 - Use periods only if the answer has multiple sentences.
+- Use the same language as the question.
 
 ## Example
 My resume: Looking for a salary in the range of 50k-60k USD.
@@ -341,6 +351,7 @@ Answer the following question based on the provided language skills.
 - If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
 - If unsure, respond with "I have no experience with that, but I learn fast" or "Not yet, but willing to learn."
 - Keep the answer under 140 characters.
+- Use the same language as the question.
 
 ## Example
 My resume: Fluent in Italian and English.
@@ -359,6 +370,7 @@ Answer the following question based on the provided interests.
 - Answer questions directly.
 - Keep the answer under 140 characters.
 - Use periods only if the answer has multiple sentences.
+- Use the same language as the question.
 
 ## Example
 My resume: Interested in AI and data science.
@@ -409,6 +421,7 @@ Please write the cover letter in a way that directly addresses the job role and 
 - Provide only the text of the cover letter.
 - Do not include any introductions, explanations, or additional information.
 - The letter should be formatted into paragraph.
+- Use the same language as the job description.
 
 ## Job Description:
 ```
@@ -430,6 +443,7 @@ The following is a resume, personal data, and an answered question using this in
 - If you cannot answer the question, answer things like "I have no experience with that, but I learn fast, very fast", "not yet, but I will learn"...
 - The answer must not be longer than a tweet (140 characters)
 - Only add periods if the answer has multiple sentences/paragraphs
+- Use the same language as the question.
 
 ## Example 1
 My resume: I'm a software engineer with 10 years of experience in  swift .
