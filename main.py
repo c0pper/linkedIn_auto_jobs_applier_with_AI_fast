@@ -1,3 +1,4 @@
+import os
 import re
 from pathlib import Path
 import yaml
@@ -12,6 +13,9 @@ from linkedIn_authenticator import LinkedInAuthenticator
 from linkedIn_bot_facade import LinkedInBotFacade
 from linkedIn_job_manager import LinkedInJobManager
 from resume import Resume
+
+from dotenv import load_dotenv
+load_dotenv()
 
 class ConfigError(Exception):
     """Custom exception for configuration errors."""
@@ -165,7 +169,11 @@ def init_browser():
     try:
         options = chromeBrowserOptions()
         service = ChromeService(ChromeDriverManager().install())
-        return webdriver.Chrome(service=service, options=options)
+        # return webdriver.Chrome(service=service, options=options)
+        return webdriver.Remote(
+            command_executor=os.getenv('SELENIUM_REMOTE_URL', 'http://localhost:4444'),
+            options=options
+        )
     except Exception as e:
         raise RuntimeError(f"Failed to initialize browser: {str(e)}")
 

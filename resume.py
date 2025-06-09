@@ -70,6 +70,8 @@ class Availability:
 @dataclass
 class SalaryExpectations:
     salaryRangeUSD: str
+    salaryRangeEUR: str
+    annualSalary: str
 
 @dataclass
 class Language:

@@ -1,97 +1,154 @@
 personal_information:
-  name: "[Your name]"
-  surname: "[Your surname]"
-  dateOfBirth: "[Your Date of Birth]"
-  country: "[Your country]"
-  city: "[Your city]"
-  address: "[Your address]"
-  phonePrefix: "[Your phone number prefix]"
-  phone: "[Your phone number]"
-  email: "[Your email]"
-  github: "[Link]"
-  linkedin: "[Link]"
+  name: "Simone Martin"
+  surname: "Marotta"
+  dateOfBirth: "04/09/1993"
+  country: "Italy"
+  city: "Naples"
+  address: ""
+  phonePrefix: "+39"
+  phone: "3394344414"
+  email: "93simonster@gmail.com"
+  github: "https://github.com/c0pper"
+  linkedin: "https://www.linkedin.com/in/simone-martin-marotta/"
 
 self_identification:
-  gender: "[Specific gender identification]"
-  pronouns: "[Your Pronouns]"
-  veteran: [true/false]
-  disability: [true/false]
-  ethnicity: "[Specify ethnicity]"
+  gender: "Male"
+  pronouns: ""
+  veteran: false
+  disability: false
+  ethnicity: ""
 
 legal_authorization:
-  euWorkAuthorization: [true/false]
-  usWorkAuthorization: [true/false]
-  requiresUsVisa: [true/false]
-  legallyAllowedToWorkInUs: [true/false]
-  requiresUsSponsorship: [true/false]
-  requiresEuVisa: [true/false]
-  legallyAllowedToWorkInEu: [true/false]
-  requiresEuSponsorship: [true/false]
+  euWorkAuthorization: true
+  usWorkAuthorization: false
+  requiresUsVisa: false
+  legallyAllowedToWorkInUs: false
+  requiresUsSponsorship: false
+  requiresEuVisa: false
+  legallyAllowedToWorkInEu: true
+  requiresEuSponsorship: false
 
 work_preferences:
-  remoteWork: [true/false]
-  inPersonWork: [true/false]
-  openToRelocation: [true/false]
-  willingToCompleteAssessments: [true/false]
-  willingToUndergoDrugTests: [true/false]
-  willingToUndergoBackgroundChecks: [true/false]
+  remoteWork: true
+  inPersonWork: true
+  openToRelocation: true
+  willingToCompleteAssessments: true
+  willingToUndergoDrugTests: true
+  willingToUndergoBackgroundChecks: true
 
 education_details:
-  - degree: "[Bachelor's/Master's/Ph.D.]"
-    university: "[Name of University]"
-    gpa: "[Your GPA]"
-    graduationYear: "[Year of Graduation]"
-    fieldOfStudy: "[Your Field of Study]"
+  - degree: "Master's degree"
+    university: "Università di Napoli L'Orientale"
+    gpa: "110/110 (Italian grading scale)"
+    graduationYear: "2021"
+    fieldOfStudy: "Language Interpretation and Translation"
     skillsAcquired:
-      leadership: "[Years]"
-      problemSolving: "[Years]"
-      criticalThinking: "[Years]"
-      adaptability: "[Years]"
-      perfectionism: "[Years]"
-      yourSkill: "[Years]"
-      yourSkill: "[Years]"
+      translation: "5 years"
+      interculturalCommunication: "5 years"
+      technicalTranslation: "3 years"
+      machineTranslation: "2 years"
+      CATTools: "3 years (SDL Trados)"
+      localization: "3 years"
+      crossCulturalAwareness: "5 years"
+      ITOptimization: "3 years"
+
+  - degree: "Bachelor's degree"
+    university: "Università di Napoli L'Orientale"
+    gpa: "102/110 (Italian grading scale)"
+    graduationYear: "2016"
+    fieldOfStudy: "Linguistic Mediation"
+    skillsAcquired:
+      multilingualism: "5 years"
+      interculturalCommunication: "5 years"
+      languageTeaching: "3 years"
+      technicalTranslation: "3 years"
+      digitalLocalization: "5 years"
+      CATTools: "3 years"
 
 experience_details:
-  - position: "[Job Title]"
-    company: "[Company Name]"
-    employmentPeriod: "[Month, Year] - [Month, Year]"
-    location: "[City, Country]"
-    industry: "[Industry of the Company]"
+  - position: "Knowledge Engineer"
+    company: "expert.ai"
+    employmentPeriod: "May 2021 - Present"
+    location: "Naples, Campania, Italy"
+    industry: "Artificial Intelligence"
     keyResponsibilities:
-      responsibility1: "[Description of responsibility1]"
-      responsibility2: "[Description of responsibility1]"
-      responsibility3: "[Description of responsibility1]"
+      responsibility1: "Designed and developed hybrid NLP solutions combining traditional ML and LLM models."
+      responsibility2: "Built RAG chatbots using proprietary and open-source Large Language Models (LLMs)."
+      responsibility3: "Monitored and optimized prompt performance for AI systems, ensuring effectiveness."
+      responsibility4: "Led full AI project life cycles using Agile and Dev/MLOps methodologies."
+      responsibility5: "Acted as NLP technical partner for customers, tailoring solutions to their needs."
+      responsibility6: "Designed and implemented frontend/backend architectures for AI applications."
+      responsibility7: "Conducted project retrospectives, documenting lessons learned and best practices."
     skillsAcquired:
-      leadership: "[Years]"
-      problemSolving: "[Years]"
-      criticalThinking: "[Years]"
-      adaptability: "[Years]"
-      perfectionism: "[Years]"
-      yourSkill: "[Years]"
-      yourSkill: "[Years]"
+      leadership: "4 years"
+      problemSolving: "4 years"
+      criticalThinking: "4 years"
+      adaptability: "4 years"
+      NLP: "4 years"
+      machineLearning: "4 years"
+      python: "4 years"
+      LLMs: "2 years"
+      RAG: "2 years"
+      agile: "4 years"
+      MLOps: "3 years"
+      backendDevelopment: "3 years"
+      frontendDevelopment: "2 years"
+
+  - position: "English Teacher"
+    company: "Istituto Scolastico Sant'Agostino"
+    employmentPeriod: "Feb 2021 - Mar 2021"
+    location: "Aversa, Campania, Italy"
+    industry: "Education"
+    keyResponsibilities:
+      responsibility1: "Planning and delivering English lessons for kindergarten learners"
+      responsibility2: "Utilising classroom management techniques to improve efficiency of lessons"
+      responsibility3: "Enriching the lesson by including additional audio-visual material"
+    skillsAcquired:
+      teaching: "1 month"
+      classroomManagement: "1 month"
 
 projects:
-  project1: "[Description of significant projects you've worked on + if available repo link]"
-  project2: "[Description of significant projects you've worked on + if available repo link]"
+  project1: "SILVANUS - A climate resilient forest management platform to prevent and suppress forest fires. (https://silvanus-project.eu)"
+  project2: "enRichMyData - An open software toolbox for enriching data with reference data. (https://enrichmydata.eu)"
+  project3: "C4E (Crowd for the Environment) - Framework for the detection and monitoring of illegal spills. (https://example.com)"
+  project4: "SCUDO - Software for automatic analysis of legal documents. (https://example.com)"
 
 availability:
-  noticePeriod: "[Specify notice period]"
+  noticePeriod: "45 days"
 
 salary_expectations:
-  salaryRangeUSD: "[Specify your salary expectations in USD]"
+  salaryRangeUSD: "€36,000-38,000 annual"
+  salaryRangeEUR: "€36,000-38,000 annual"
+  annualSalary: "30000 annual"
 
 certifications:
-  - "[Certification 1]"
-  - "[Certification 2]"
-  - "[Certification 3]"
+  - "Training Certificate in Data Privacy and Security from ICTLC"
+  - "Attestato di frequenza Corso di Formazione relativo all'organizzazione aziendale from IFOA"
+  - "Attestato di frequenza Corso di Formazione relativo alla comunicazione aziendale from IFOA"
 
 skills:
-  problemSolving: "[Years]"
-  criticalThinking: "[Years]"
-  adaptability: "[Years]"
-  perfectionism: "[Years]"
-  yourSkill: "[Years]"
-  yourSkill: "[Years]"
+  problemSolving: "10 years"
+  criticalThinking: "4 years"
+  adaptability: "4 years"
+  python: "4 years"
+  machineLearning: "4 years"
+  javascript: "2 years"
+  translation: "7 years"
+  teaching: "2 years"
+  reactjs: "2 years"
+  flask: "2 years"
+  fastapi: "2 years"
+  django: "1 year"
+  tensorflow: "2 years"
+  nlp: "4 years"
+  pandas: "2 years"
+  docker: "4 years"
+  apiDevelopment: "2 years"
+  responsiveWebDesign: "1 year"
+  ciCd: "2 years"
+  opencv: "1 year"
+  dataScience: "2 years"
+  dataVisualization: "2 years"
 
 languages:
   - language: "Italian"
@@ -100,4 +157,13 @@ languages:
     proficiency: "Professional"
 
 interests:
-  - "[List any hobbies or interests relevant to your professional profile]"
+  - "AI and how it can actually be useful"
+  - "Building smart tools to automate boring stuff"
+  - "Making sense of messy data and turning it into knowledge"
+  - "Privacy, security, and not being tracked everywhere"
+  - "Teaching, explaining things clearly, and learning in public"
+  - "Languages, how people communicate, and what shapes meaning"
+  - "Biking around the city and finding the quietest routes"
+  - "Living efficiently without overcomplicating life"
+  - "Coffee, sandwiches, and finding small daily comforts"
+  - "Figuring out how to stay active and sane in winter"

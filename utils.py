@@ -115,15 +115,17 @@ def chromeBrowserOptions():
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
     # Assicurati che la directory del profilo Chrome esista
-    ensure_chrome_profile()
+    # ensure_chrome_profile()
 
-    if len(chromeProfilePath) > 0:
-        initialPath = os.path.dirname(chromeProfilePath)
-        profileDir = os.path.basename(chromeProfilePath)
-        options.add_argument('--user-data-dir=' + initialPath)
-        options.add_argument("--profile-directory=" + profileDir)
-    else:
-        options.add_argument("--incognito")
+    # if len(chromeProfilePath) > 0:
+    #     initialPath = os.path.dirname(chromeProfilePath)
+    #     profileDir = os.path.basename(chromeProfilePath)
+    #     options.add_argument('--user-data-dir=' + initialPath)
+    #     options.add_argument("--profile-directory=" + profileDir)
+    # else:
+    #     options.add_argument("--incognito")
+        
+    options.add_argument("--incognito")
         
     return options
 

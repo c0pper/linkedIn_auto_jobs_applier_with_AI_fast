@@ -245,7 +245,14 @@ class GPTAnswerer:
         func_template = self._preprocess_template_string(strings.numeric_question_template)
         prompt = ChatPromptTemplate.from_template(func_template)
         chain = prompt | self.llm_cheap | StrOutputParser()
-        output_str = chain.invoke({"resume": self.resume, "question": question, "default_experience": default_experience})
+        output_str = chain.invoke(
+            {
+                "resume": self.resume, 
+                "question": question, 
+                "default_experience": default_experience, 
+                "RAL": self.resume.salary_expectations.annualSalary,
+            }
+        )
         try:
             output = self.extract_number_from_string(output_str)
         except ValueError:

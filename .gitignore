@@ -12,3 +12,6 @@ generated_cv*
 resume.html
 .vscode
 chrome_profile
+.env
+secrets.yml
+log*

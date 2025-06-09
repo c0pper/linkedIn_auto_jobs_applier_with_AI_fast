@@ -58,7 +58,7 @@ class LinkedInJobManager:
         file_path = 'data_folder/output/old_Questions.csv'
         if os.path.exists(file_path):
             with open(file_path, 'r', newline='', encoding='utf-8', errors='ignore') as file:
-                csv_reader = csv.reader(file, delimiter=',', quotechar='"')
+                csv_reader = csv.reader(file, delimiter=';', quotechar='"')
                 for row in csv_reader:
                     if len(row) == 3:
                         answer_type, question_text, answer = row
@@ -124,16 +124,34 @@ class LinkedInJobManager:
             except NoSuchElementException:
                 pass
             
-            job_results = self.driver.find_element(By.CLASS_NAME, "jobs-search-results-list")
-            utils.scroll_slow(self.driver, job_results)
-            utils.scroll_slow(self.driver, job_results, step=300, reverse=True)
+            # job_results = self.driver.find_element(By.CLASS_NAME, "jobs-search-results-list")
+            # job_results = self.driver.find_element(By.CLASS_NAME, "XmiiqsfgkweaCNUMRlQgLIWHNSiBbioBmTA")
+            # utils.scroll_slow(self.driver, job_results)
+            # utils.scroll_slow(self.driver, job_results, step=300, reverse=True)
             
-            job_list_elements = self.driver.find_elements(By.CLASS_NAME, 'scaffold-layout__list-container')[0].find_elements(By.CLASS_NAME, 'jobs-search-results__list-item')
-            
+            # job_list_elements = self.driver.find_elements(By.CLASS_NAME, 'scaffold-layout__list-container')[0].find_elements(By.CLASS_NAME, 'jobs-search-results__list-item')
+            # job_list_elements = job_results.find_elements(By.CLASS_NAME, "ubwaUEAJBUeMDjavzSkWLzlJNEgXCcRJQCgQA")
+
+            job_results = self.driver.find_element(By.CLASS_NAME, "scaffold-layout__list").find_element(By.TAG_NAME, "ul")
+
+            job_list_elements = job_results.find_elements(By.TAG_NAME, "li")
+
             if not job_list_elements:
                 raise Exception("No job class elements found on page")
             
-            job_list = [Job(*self.extract_job_information_from_tile(job_element)) for job_element in job_list_elements]
+            # job_list = [Job(*self.extract_job_information_from_tile(job_element)) for job_element in job_list_elements]
+            job_list = []
+            for job_element in job_list_elements:
+                try:
+                    job_title, company, job_location, link, apply_method = self.extract_job_information_from_tile(job_element)
+                    if not link:
+                        continue
+                    job = Job(job_title, company, job_location, link, apply_method)
+                    self.seen_jobs.append(link)
+                    job_list.append(job)
+                except Exception as e:
+                    utils.printred(f"Error extracting job information: {e}")
+                    traceback.print_exc()
             
             for job in job_list:
                 if self.is_blacklisted(job.title, job.company, job.link):
@@ -200,9 +218,9 @@ class LinkedInJobManager:
     def extract_job_information_from_tile(self, job_tile):
         job_title, company, job_location, apply_method, link = "", "", "", "", ""
         try:
-            job_title = job_tile.find_element(By.CLASS_NAME, 'job-card-list__title').text
-            link = job_tile.find_element(By.CLASS_NAME, 'job-card-list__title').get_attribute('href').split('?')[0]
-            company = job_tile.find_element(By.CLASS_NAME, 'job-card-container__primary-description').text
+            job_title = job_tile.find_element(By.CSS_SELECTOR, 'a.job-card-list__title--link > span > strong').text
+            link = job_tile.find_element(By.CLASS_NAME, 'job-card-list__title--link').get_attribute('href').split('?')[0]
+            company = job_tile.find_element(By.CLASS_NAME, 'artdeco-entity-lockup__subtitle').text
         except:
             pass
         try:
@@ -212,11 +230,11 @@ class LinkedInJobManager:
         except:
             pass
         try:
-            job_location = job_tile.find_element(By.CLASS_NAME, 'job-card-container__metadata-item').text
+            job_location = job_tile.find_element(By.CLASS_NAME, 'job-card-container__metadata-wrapper').text
         except:
             pass
         try:
-            apply_method = job_tile.find_element(By.CLASS_NAME, 'job-card-container__apply-method').text
+            apply_method = job_tile.find_elements(By.CLASS_NAME, "job-card-container__footer-item")[-1].text
         except:
             apply_method = "Applied"
 
@@ -226,5 +244,6 @@ class LinkedInJobManager:
         job_title_words = job_title.lower().split(' ')
         title_blacklisted = any(word in job_title_words for word in self.title_blacklist)
         company_blacklisted = company.strip().lower() in (word.strip().lower() for word in self.company_blacklist)
-        link_seen = link in self.seen_jobs
-        return title_blacklisted or company_blacklisted or link_seen
+        # link_seen = link in self.seen_jobs
+        # return title_blacklisted or company_blacklisted or link_seen
+        return title_blacklisted or company_blacklisted

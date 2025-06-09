@@ -1,4 +1,5 @@
 import base64
+import csv
 import os
 import random
 import tempfile
@@ -27,7 +28,12 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from xhtml2pdf import pisa
 
+from logger import logger
 import utils    
+
+
+csv_path = os.path.join("data_folder", "output", "old_Questions.csv")
+os.makedirs(os.path.dirname(csv_path), exist_ok=True)  # ensure directory exists
 
 class LinkedInEasyApplier:
     def __init__(self, driver: Any, resume_dir: Optional[str], set_old_answers: List[Tuple[str, str, str]], gpt_answerer: Any):
@@ -76,7 +82,7 @@ class LinkedInEasyApplier:
             see_more_button = self.driver.find_element(By.XPATH, '//button[@aria-label="Click to see more description"]')
             see_more_button.click()
             time.sleep(.2)
-            description = self.driver.find_element(By.CLASS_NAME, 'jobs-description-content__text').text
+            description = self.driver.find_element(By.CLASS_NAME, 'jobs-description-content__text--stretch').text
             # self._scroll_page()
             return description
         except NoSuchElementException:
@@ -138,8 +144,8 @@ class LinkedInEasyApplier:
 
     def fill_up(self) -> None:
         try:
-            easy_apply_content = self.driver.find_element(By.CLASS_NAME, 'jobs-easy-apply-content')
-            pb4_elements = easy_apply_content.find_elements(By.CLASS_NAME, 'pb4')
+            # easy_apply_content = self.driver.find_element(By.CLASS_NAME, 'jobs-easy-apply-content')
+            pb4_elements = self.driver.find_elements(By.CLASS_NAME, 'fb-dash-form-element')
             for element in pb4_elements:
                 self._process_form_element(element)
         except Exception as e:
@@ -150,7 +156,7 @@ class LinkedInEasyApplier:
             if self._is_upload_field(element):
                 self._handle_upload_fields(element)
             else:
-                self._fill_additional_questions()
+                self._fill_additional_questions(element)
         except Exception as e:
             pass
 
@@ -223,10 +229,12 @@ class LinkedInEasyApplier:
             c.save()
             element.send_keys(letter_path)
 
-    def _fill_additional_questions(self) -> None:
-        form_sections = self.driver.find_elements(By.CLASS_NAME, 'jobs-easy-apply-form-section__grouping')
-        for section in form_sections:
-            self._process_question(section)
+    def _fill_additional_questions(self, element: WebElement) -> None:
+        # form_sections = self.driver.find_elements(By.CLASS_NAME, 'jobs-easy-apply-form-section__grouping')
+        # form_sections = self.driver.find_elements(By.CLASS_NAME, 'QSaviQdRZIrpgqmgiBqDtFERLTLuBmLHuY')
+        # for section in form_sections:
+        #     self._process_question(section)
+        self._process_question(element)
 
     def _process_question(self, section: WebElement) -> None:
         if self._handle_terms_of_service(section):
@@ -250,23 +258,29 @@ class LinkedInEasyApplier:
 
     def _handle_radio_question(self, element: WebElement) -> None:
         try:
-            question = element.find_element(By.CLASS_NAME, 'jobs-easy-apply-form-element')
-            radios = question.find_elements(By.CLASS_NAME, 'fb-text-selectable__option')
+            question = element.find_element(By.CLASS_NAME, 'fb-dash-form-element__label')
+            radios = element.find_elements(By.CSS_SELECTOR, 'input[type="radio"].fb-form-element__checkbox')
             if not radios:
                 return
 
             # Check if any radio button is already selected
             for radio in radios:
-                if radio.get_attribute('aria-checked') == 'true':
+                # if radio.get_attribute('aria-checked') == 'true':
+                if radio.is_selected():
                     print("Answer already selected. Skipping...")
                     return  # Early exit if an answer is already selected
 
-            question_text = element.text.lower()
+            question_text = question.text.lower()
             options = [radio.text.lower() for radio in radios]
 
             answer = self._get_answer_from_set('radio', question_text, options)
             if not answer:
                 answer = self.gpt_answerer.answer_question_from_options(question_text, options)
+                logger.info(f"Answer for question '{question_text}': {answer}\n{'radio'};{question_text};{answer}")
+                with open(csv_path, mode='a', newline='', encoding='utf-8') as file:
+                    writer = csv.writer(file, delimiter=';')
+                    writer.writerow(["radio", question_text, answer])
+                
 
             self._select_radio(radios, answer)
         except NoSuchElementException:
@@ -276,9 +290,11 @@ class LinkedInEasyApplier:
 
     def _handle_textbox_question(self, element: WebElement) -> None:
         try:
-            question = element.find_element(By.CLASS_NAME, 'jobs-easy-apply-form-element')
-            question_text = question.find_element(By.TAG_NAME, 'label').text.lower()
-            text_field = self._find_text_field(question)
+            question_text = element.find_element(By.TAG_NAME, 'label').text.lower()
+            text_field = self._find_text_field(element)
+            # question = element.find_element(By.CLASS_NAME, 'jobs-easy-apply-form-element')
+            # question_text = question.find_element(By.TAG_NAME, 'label').text.lower()
+            # text_field = self._find_text_field(question)
             if not text_field:
                 print("Textbox element not found(early). Skipping...")
                 return
@@ -292,7 +308,11 @@ class LinkedInEasyApplier:
 
             if not answer:
                 answer = self.gpt_answerer.answer_question_numeric(question_text) if is_numeric else self.gpt_answerer.answer_question_textual_wide_range(question_text)
-
+                logger.info(f"Answer for question '{question_text}': {answer}\n{'numeric' if is_numeric else 'text'};{question_text};{answer}")
+                with open(csv_path, mode='a', newline='', encoding='utf-8') as file:
+                    writer = csv.writer(file, delimiter=';')
+                    writer.writerow(["numeric" if is_numeric else "text", question_text, answer])
+                
             self._enter_text(text_field, answer)
             self._handle_form_errors(element, question_text, answer, text_field)
         except NoSuchElementException:
@@ -323,9 +343,10 @@ class LinkedInEasyApplier:
 
     def _handle_dropdown_question(self, element: WebElement) -> None:
         try:
-            question = element.find_element(By.CLASS_NAME, 'jobs-easy-apply-form-element')
-            question_text = question.find_element(By.TAG_NAME, 'label').text.lower()
-            dropdown = question.find_element(By.TAG_NAME, 'select')
+            # question = element.find_element(By.CLASS_NAME, 'QSaviQdRZIrpgqmgiBqDtFERLTLuBmLHuY')
+            # question_text = question.find_element(By.TAG_NAME, 'label').text.lower()
+            question_text = element.find_element(By.TAG_NAME, 'label').text.lower()
+            dropdown = element.find_element(By.TAG_NAME, 'select')
             select = Select(dropdown)
             # sleep 1 sceond
             time.sleep(.4)
@@ -336,7 +357,7 @@ class LinkedInEasyApplier:
 
             # Check if an option is already selected
             selected_option = select.first_selected_option.text.strip()
-            if selected_option and selected_option != 'Select an option':
+            if selected_option and selected_option not in ['Select an option', 'Seleziona un’opzione']:
                 print(f"Dropdown already selected ({selected_option}). Skipping...")
                 return  # Early exit if a dropdown option is already selected
 
@@ -345,6 +366,10 @@ class LinkedInEasyApplier:
 
             if not answer:
                 answer = self.gpt_answerer.answer_question_from_options(question_text, options)
+                logger.info(f"Answer for question '{question_text}': {answer}\n{'dropdown'};{question_text};{answer}")
+                with open(csv_path, mode='a', newline='', encoding='utf-8') as file:
+                    writer = csv.writer(file, delimiter=';')
+                    writer.writerow(["dropdown", question_text, answer])
 
             self._select_dropdown(dropdown, answer)
         except NoSuchElementException:
@@ -395,11 +420,25 @@ class LinkedInEasyApplier:
         select.select_by_visible_text(text)
 
     def _select_radio(self, radios: List[WebElement], answer: str) -> None:
+        answer = answer.lower().strip()
         for radio in radios:
-            if answer in radio.text.lower():
-                radio.find_element(By.TAG_NAME, 'label').click()
-                return
-        radios[-1].find_element(By.TAG_NAME, 'label').click()
+        #     if answer in radio.text.lower():
+        #         radio.find_element(By.TAG_NAME, 'label').click()
+        #         return
+        # radios[-1].find_element(By.TAG_NAME, 'label').click()
+            try:
+                label = radio.find_element(By.XPATH, './following-sibling::label')
+                if answer in label.text.lower().strip():
+                    label.click()  # Click the input directly for better reliability
+                    return
+            except Exception:
+                continue
+    
+        # Fallback: select last radio if no match found
+        try:
+            radios[-1].find_element(By.XPATH, './following-sibling::label').click()
+        except Exception as e:
+            raise ValueError(f"Failed to select any radio option: {str(e)}")
 
     def _handle_form_errors(self, element: WebElement, question_text: str, answer: str, text_field: WebElement) -> None:
         try:

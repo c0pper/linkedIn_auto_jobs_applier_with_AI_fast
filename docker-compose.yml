@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  chrome:
+    image: selenium/standalone-chrome:4.33.0-20250606
+    shm_size: 2gb
+    ports:
+      - "4444:4444"
+      - "5900:5900"
+    volumes:
+      - /dev/shm:/dev/shm
+
+  app:
+    build: .
+    depends_on:
+      - chrome
+    volumes:
+      - ./data_folder:/app/data_folder
+      - ./output:/app/data_folder/output
+    environment:
+      - SELENIUM_REMOTE_URL=http://chrome:4444

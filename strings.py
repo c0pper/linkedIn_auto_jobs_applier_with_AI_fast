@@ -456,8 +456,10 @@ numeric_question_template = """The following is a resume and an answered questio
 - Regarding work experience just check the Experience Details -> Skills Acquired section.
 - Regarding experience in general just check the section Experience Details -> Skills Acquired and also Education Details -> Skills Acquired.
 - If it seems likely that you have the experience based on the resume, even if not explicitly stated on the resume, answer as if you have the experience.
-- If you cannot answer the question, provide answers like "I have no experience with that, but I learn fast, very fast", "not yet, but I will learn".
-- The answer must not be larger than a tweet (140 characters).
+- For questions regarding common tools like sharepoint, office etc, just answer 4.
+- If it's something that has is common in the field of the resume, use the years i've been working in that field (example: asking years of Flask experience, if you have 5 years of working in the general field, answer 5).
+- If it's about RAL (current annual retribution), just answer {RAL}.
+- Finally, if you cannot answer the question, answer 1, but try to avoid it as much as possible.
 
 ## Example
 My resume: I'm a software engineer with 10 years of experience on both swift and python.
