@@ -16,6 +16,6 @@ services:
       - chrome
     volumes:
       - ./data_folder:/app/data_folder
-      - ./output:/app/data_folder/output
+      # - ./output:/app/data_folder/output
     environment:
       - SELENIUM_REMOTE_URL=http://chrome:4444

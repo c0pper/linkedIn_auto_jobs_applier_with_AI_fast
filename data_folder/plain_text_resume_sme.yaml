@@ -1,0 +1,209 @@
+personal_information:
+  name: "Smeralda"
+  surname: "Brigandi"
+  dateOfBirth: "21/11/1992"
+  country: "Italy"
+  city: "Messina"
+  address: ""
+  phonePrefix: "+39"
+  phone: "345 22 96 875 / 081 18835742"
+  email: "smeraldabrigandi@gmail.com"
+  github: ""
+  linkedin: "www.linkedin.com/in/smeraldabrigandi"
+  instagram: "https://www.instagram.com/smeraldabrigandi/"
+
+self_identification:
+  gender: "female"
+  pronouns: ""
+  veteran: false
+  disability: false
+  ethnicity: ""
+
+legal_authorization:
+  euWorkAuthorization: true
+  usWorkAuthorization: false
+  requiresUsVisa: false
+  legallyAllowedToWorkInUs: false
+  requiresUsSponsorship: false
+  requiresEuVisa: false
+  legallyAllowedToWorkInEu: true
+  requiresEuSponsorship: false
+
+work_preferences:
+  remoteWork: false
+  inPersonWork: true
+  openToRelocation: true
+  willingToCompleteAssessments: true
+  willingToUndergoDrugTests: true
+  willingToUndergoBackgroundChecks: true
+
+education_details:
+  - degree: "Laurea in Design della Moda"
+    university: "IUAD - Accademia della Moda"
+    gpa: ""
+    graduationYear: "2020"
+    fieldOfStudy: "Fashion Design, Graphic Design, Modellistica, Modellistica digitale, Illustrazione, Storia del Costume, Sviluppo taglie"
+    skillsAcquired:
+      fashionDesign: "5"
+      graphicDesign: "4"
+      patternMaking: "4"
+      digitalPatternMaking: "4"
+      illustration: "5"
+      costumeHistory: "4"
+      sizeDevelopment: "4"
+
+experience_details:
+  - position: "Assistente alla vendita"
+    company: "Sartoria Italiana di Massimiliano Sorvino"
+    employmentPeriod: "2024 - Present"
+    location: ""
+    industry: "Fashion Retail"
+    keyResponsibilities:
+      responsibility1: "Vendita assistita"
+      responsibility2: "Sdifettamento sul cliente per eventuali modifiche sartoriali su misura"
+    skillsAcquired:
+      customerService: "4"
+      tailoring: "3"
+
+  - position: "Tutor laboratorio di Arte e Moda"
+    company: "Progetto Summer School scuola Rodari (Boscoreale) / Michelangelo s.r.l."
+    employmentPeriod: "Luglio 2024"
+    location: ""
+    industry: "Education / Fashion"
+    keyResponsibilities:
+      responsibility1: "Realizzazione di chitoni previa colorazione mediante il metodo del dye-type"
+      responsibility2: "Realizzazione di mini armature con pezzi di scatolone e decorazioni dipinte a mano"
+      responsibility3: "Contestualizzazione storica"
+    skillsAcquired:
+      artEducation: "4"
+      historicalContext: "4"
+      creativeWorkshops: "5"
+
+  - position: "Assistente Stilista (collezione UOMO e DONNA)"
+    company: "Psicopatici italia"
+    employmentPeriod: "2023 - 2024"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Figurinista e Fashion Illustrator"
+      responsibility2: "Ricerca dei trend"
+      responsibility3: "Progettazione e realizzazione moodboard"
+      responsibility4: "Progettazione grafica stampe"
+      responsibility5: "Sdifettamento prototipi"
+      responsibility6: "Realizzazione schede tecniche e relativi plat"
+      responsibility7: "Stylist Junior per gli outfit indossati in shooting ed eventi del Brand"
+    skillsAcquired:
+      fashionIllustration: "5"
+      trendResearch: "4"
+      moodboardCreation: "5"
+      printDesign: "4"
+      prototyping: "4"
+      technicalSheets: "4"
+      styling: "4"
+
+  - position: "Assistente Stilista (collezione DONNA)"
+    company: "H2O e PIA.B. / Battaglia Fashion Group"
+    employmentPeriod: "2022 - 2023"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Fashion Illustrator"
+      responsibility2: "Ricerca dei trend"
+      responsibility3: "Progettazione e realizzazione moodboard"
+      responsibility4: "Illustrazione e realizzazione workbook"
+      responsibility5: "Realizzazione schede tecniche e relativi plat"
+      responsibility6: "Gestione comunicazione coi fornitori per l’invio e le spiegazioni delle relative schede tecniche"
+      responsibility7: "Creazione di minivideo per i Social aziendali con le illustrazioni e i mood realizzati"
+    skillsAcquired:
+      fashionIllustration: "5"
+      trendResearch: "4"
+      moodboardCreation: "5"
+      workbookCreation: "4"
+      technicalSheets: "4"
+      supplierCommunication: "3"
+      socialMediaContent: "3"
+
+  - position: "Assistente Stilista (collezione DONNA)"
+    company: "FRACOMINA p.f.c.m.n.a."
+    employmentPeriod: "2021 - 2022"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Ricerca dei trend"
+      responsibility2: "Progettazione e realizzazione moodboard"
+      responsibility3: "Fashion Illustrator"
+      responsibility4: "Realizzazione schede tecniche e relativi plat (in italiano e in inglese)"
+      responsibility5: "Sdifettamento prototipi"
+    skillsAcquired:
+      trendResearch: "4"
+      moodboardCreation: "5"
+      fashionIllustration: "5"
+      technicalSheets: "4"
+      bilingualCommunication: "3"
+      prototyping: "4"
+
+  - position: "Op. CAD e Assistente stilista (collezione DONNA)"
+    company: "Roberta Biagi s.r.l"
+    employmentPeriod: "2020 - 2021"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Realizzazione distinte basi"
+      responsibility2: "Progettazione capsule collection"
+      responsibility3: "Realizzazione plat"
+      responsibility4: "Progettazione e digitalizzazione cartamodelli"
+      responsibility5: "Gestione Prototipia"
+      responsibility6: "Sviluppo taglie"
+    skillsAcquired:
+      cadOperations: "4"
+      capsuleCollection: "4"
+      patternDigitalization: "4"
+      prototyping: "4"
+      sizeDevelopment: "4"
+
+projects: ""
+
+availability:
+  noticePeriod: ""
+
+salary_expectations:
+  salaryRangeUSD: ""
+
+certifications: ""
+
+skills:
+  fashionIllustration: 5
+  trendResearch: 4
+  moodboardCreation: 5
+  printDesign: 4
+  technicalSheets: 4
+  styling: 4
+  supplierCommunication: 3
+  socialMediaContent: 3
+  bilingualCommunication: 3
+  cadOperations: 4
+  patternDigitalization: 4
+  prototyping: 4
+  sizeDevelopment: 4
+  customerService: 4
+  tailoring: 3
+  artEducation: 4
+  historicalContext: 4
+  creativeWorkshops: 5
+
+languages:
+  - language: "Italian"
+    proficiency: "Native"
+  - language: "English"
+    proficiency: "Professional"
+  - language: "French"
+    proficiency: ""
+  - language: "German"
+    proficiency: ""
+
+interests:
+  - "Disegno"
+  - "Arte"
+  - "Letteratura"
+  - "Storia"
+  - "Cinema"

@@ -17,6 +17,8 @@ from resume import Resume
 from dotenv import load_dotenv
 load_dotenv()
 
+plain_text_resume_file_name = os.getenv('PLAIN_TEXT_RESUME_FILE_NAME', 'plain_text_resume.yaml')
+
 class ConfigError(Exception):
     """Custom exception for configuration errors."""
     pass
@@ -136,13 +138,13 @@ class FileManager:
 
         secrets_file = app_data_folder / 'secrets.yaml'
         config_file = app_data_folder / 'config.yaml'
-        plain_text_resume_file = app_data_folder / 'plain_text_resume.yaml'
+        plain_text_resume_file = app_data_folder / plain_text_resume_file_name
         
         missing_files = []
         if not config_file.exists():
             missing_files.append('config.yaml')
         if not plain_text_resume_file.exists():
-            missing_files.append('plain_text_resume.yaml')
+            missing_files.append(plain_text_resume_file_name)
         
         if missing_files:
             raise FileNotFoundError(f"Missing files in the data folder: {', '.join(missing_files)}")
