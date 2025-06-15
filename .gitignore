@@ -12,4 +12,4 @@ resume.html
 .vscode
 chrome_profile
 data_folder/secrets.yaml
-log*
+.logs/
