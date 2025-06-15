@@ -10,7 +10,6 @@ personal_information:
   email: "smeraldabrigandi@gmail.com"
   github: ""
   linkedin: "www.linkedin.com/in/smeraldabrigandi"
-  instagram: "https://www.instagram.com/smeraldabrigandi/"
 
 self_identification:
   gender: "female"
@@ -167,7 +166,9 @@ availability:
   noticePeriod: ""
 
 salary_expectations:
-  salaryRangeUSD: ""
+  salaryRangeUSD: "€36,000-38,000 annual"
+  salaryRangeEUR: "€36,000-38,000 annual"
+  annualSalary: "30000 annual"
 
 certifications: ""
 

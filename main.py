@@ -171,7 +171,7 @@ def init_browser():
     try:
         options = chromeBrowserOptions()
         service = ChromeService(ChromeDriverManager().install())
-        # return webdriver.Chrome(service=service, options=options)
+        return webdriver.Chrome(service=service, options=options)
         return webdriver.Remote(
             command_executor=os.getenv('SELENIUM_REMOTE_URL', 'http://localhost:4444'),
             options=options
@@ -202,7 +202,8 @@ def create_and_run_bot(email: str, password: str, parameters: dict, openai_api_k
 @click.option('--resume', type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path), help="Path to the resume PDF file")
 def main(resume: Path = None):
     try:
-        data_folder = Path("data_folder")
+        # data_folder = Path("data_folder")
+        data_folder = Path(os.getenv('DATA_FOLDER', 'data_folder'))
         secrets_file, config_file, plain_text_resume_file, output_folder = FileManager.validate_data_folder(data_folder)
         parameters = ConfigValidator.validate_config(config_file)
         email, password, openai_api_key = ConfigValidator.validate_secrets(secrets_file)
