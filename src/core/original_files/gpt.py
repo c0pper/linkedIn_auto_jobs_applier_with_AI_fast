@@ -249,7 +249,7 @@ class GPTAnswerer:
             {
                 "resume": self.resume, 
                 "question": question, 
-                "default_experience": default_experience, 
+                # "default_experience": default_experience, 
                 "RAL": self.resume.salary_expectations.annualSalary,
             }
         )
@@ -273,3 +273,10 @@ class GPTAnswerer:
         output_str = chain.invoke({"resume": self.resume, "question": question, "options": options})
         best_option = self.find_best_match(output_str, options)
         return best_option
+
+if __name__ == "__main__":
+    from src.core.original_files.resume import Resume
+    
+    gpt_answerer = GPTAnswerer("")
+    gpt_answerer.set_resume(Resume(open("data_folder/plain_text_resume.yaml", "r").read()))
+    res = gpt_answerer.answer_question_numeric("How much experience do you have?", default_experience=3)

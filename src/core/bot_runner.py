@@ -50,12 +50,12 @@ class BotRunner:
             try:
                 # Initialize browser with options that allow for remote control
                 options = chromeBrowserOptions()
-                service = ChromeService(ChromeDriverManager().install())
-                self.driver = webdriver.Chrome(service=service, options=options)
-                # self.driver = webdriver.Remote(
-                #     command_executor=os.getenv('SELENIUM_REMOTE_URL', 'http://localhost:4444'),
-                #     options=options
-                # )
+                # service = ChromeService(ChromeDriverManager().install())
+                # self.driver = webdriver.Chrome(service=service, options=options)
+                self.driver = webdriver.Remote(
+                    command_executor=os.getenv('SELENIUM_REMOTE_URL', 'http://localhost:4444'),
+                    options=options
+                )
                 
                 # Run the original bot logic
                 bot = create_bot(driver=self.driver, **args)

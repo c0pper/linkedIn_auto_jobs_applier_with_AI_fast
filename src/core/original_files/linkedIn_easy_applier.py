@@ -29,7 +29,9 @@ from reportlab.lib.pagesizes import letter
 from xhtml2pdf import pisa
 
 from src.core.original_files.logger import logger
-from src.core.original_files import utils    
+from src.core.original_files import utils
+from src.core.original_files.gpt import GPTAnswerer
+
 
 
 csv_path = os.path.join("data_folder", "output", "old_Questions.csv")
@@ -42,7 +44,7 @@ class LinkedInEasyApplier:
         self.driver = driver
         self.resume_dir = resume_dir
         self.set_old_answers = set_old_answers
-        self.gpt_answerer = gpt_answerer
+        self.gpt_answerer: GPTAnswerer = gpt_answerer
 
     def job_apply(self, job: Any):
         self.driver.get(job.link)

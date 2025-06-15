@@ -10,16 +10,45 @@ services:
     volumes:
       - /dev/shm:/dev/shm
 
-  linkedin-bot:
-    build: .
-    depends_on:
-      - chrome
+  api:
+    build:
+      context: .
+      target: api
     ports:
-      - "8054:8054"  # FastAPI port
-      - "7860:7860"  # Gradio UI port
+      - "8054:8054"
     volumes:
-      - ./data_folder:/app/data_folder  # Persist data
+      - ./data_folder:/app/data_folder
     environment:
       - DATA_FOLDER=/app/data_folder
       - SELENIUM_REMOTE_URL=http://chrome:4444
-    restart: unless-stopped
+    depends_on:
+      - chrome
+
+  gradio-ui:
+    build:
+      context: .
+      target: gradio-ui
+    ports:
+      - "7860:7860"
+    depends_on:
+      - api
+    volumes:
+      - ./data_folder:/app/data_folder
+    environment:
+      - DATA_FOLDER=/app/data_folder
+      - API_URL=http://api:8054/api  # Points to the api service
+
+  # linkedin-bot:
+  #   build: .
+  #   depends_on:
+  #     - chrome
+  #   ports:
+  #     - "8054:8054"  # FastAPI port
+  #     - "7860:7860"  # Gradio UI port
+  #   volumes:
+  #     - ./data_folder:/app/data_folder  # Persist data
+  #   environment:
+  #     - DATA_FOLDER=/app/data_folder
+  #     - SELENIUM_REMOTE_URL=http://chrome:4444
+  #     - PYTHONPATH=/app
+  #   restart: unless-stopped

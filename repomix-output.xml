@@ -1,0 +1,4478 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+data_folder/
+  config.yaml
+  plain_text_resume_sme.yaml
+  plain_text_resume.yaml
+  secrets_sample.yml
+data_folder_example/
+  config.yaml
+  plain_text_resume.yaml
+  secrets.yaml
+resume_template/
+  casual_markdown.js
+  reorganizeHeader.js
+  resume.css
+src/
+  api/
+    endpoints.py
+  core/
+    original_files/
+      gpt.py
+      job.py
+      linkedIn_authenticator.py
+      linkedIn_bot_facade.py
+      linkedIn_easy_applier.py
+      linkedIn_job_manager.py
+      logger.py
+      main.py
+      resume.py
+      strings.py
+      utils.py
+    bot_runner.py
+    session_manager.py
+  interfaces/
+    gradio_ui.py
+  models/
+    schemas.py
+  main.py
+.gitignore
+docker-compose.yml
+Dockerfile
+documentation.md
+LICENSE
+README.md
+requirements.txt
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="data_folder/secrets_sample.yml">
+email: [Your Linkedin email]
+password: [Your Linkedin password]
+openai_api_key: [OpenAi API key, tutorial -> https://medium.com/@lorenzozar/how-to-get-your-own-openai-api-key-f4d44e60c327]
+</file>
+
+<file path="resume_template/casual_markdown.js">
+/*****************************************************************************
+ * casual-markdown - a lightweight regexp-base markdown parser with TOC support
+ * 2022/07/31, v0.90, refine frontmatter (simple yaml)  
+ * 2023/04/12, v0.92, addCopyButton for code-block
+ *
+ * Copyright (c) 2022-2023, Casualwriter (MIT Licensed)
+ * https://github.com/casualwriter/casual-markdown
+*****************************************************************************/
+;(function(){ 
+
+  // define md object, and extent function (which is a dummy function)
+  var md = { yaml:{}, before: function (str) {return str}, after: function (str) {return str} }
+
+  // function for REGEXP to convert html tag. ie. <TAG> => &lt;TAG*gt;  
+  md.formatTag = function (html) { return html.replace(/</g,'&lt;').replace(/\>/g,'&gt;'); }
+
+  // frontmatter for simple YAML (support multi-level, but string value only)
+  md.formatYAML = function (front, matter) {
+    var level = {}, latest = md.yaml;
+    matter.replace( /^\s*#(.*)$/gm, '' ).replace( /^( *)([^:^\n]+):(.*)$/gm, function(m, sp, key,val) { 
+        level[sp] = level[sp] || latest
+        latest = level[sp][key.trim()] = val.trim() || {}
+        for (e in level) if(e>sp) level[e]=null;
+      } );
+    return ''
+  }
+
+  //===== format code-block, highlight remarks/keywords for code/sql
+  md.formatCode = function (match, title, block) {
+    // convert tag <> to &lt; &gt; tab to 3 space, support marker using ^^^
+    block = block.replace(/</g,'&lt;').replace(/\>/g,'&gt;')
+    block = block.replace(/\t/g,'   ').replace(/\^\^\^(.+?)\^\^\^/g, '<mark>$1</mark>')
+    
+    // highlight comment and keyword based on title := none | sql | code
+    if (title.toLowerCase(title) == 'sql') {
+      block = block.replace(/^\-\-(.*)/gm,'<rem>--$1</rem>').replace(/\s\-\-(.*)/gm,' <rem>--$1</rem>')   
+      block = block.replace(/(\s?)(function|procedure|return|if|then|else|end|loop|while|or|and|case|when)(\s)/gim,'$1<b>$2</b>$3')
+      block = block.replace(/(\s?)(select|update|delete|insert|create|from|where|group by|having|set)(\s)/gim,'$1<b>$2</b>$3')
+    } else if ((title||'none')!=='none') {
+      block = block.replace(/^\/\/(.*)/gm,'<rem>//$1</rem>').replace(/\s\/\/(.*)/gm,' <rem>//$1</rem>')   
+      block = block.replace(/(\s?)(function|procedure|return|exit|if|then|else|end|loop|while|or|and|case|when)(\s)/gim,'$1<b>$2</b>$3')
+      block = block.replace(/(\s?)(var|let|const|=>|for|next|do|while|loop|continue|break|switch|try|catch|finally)(\s)/gim,'$1<b>$2</b>$3')
+    }
+    
+    return '<pre title="' + title + '"><button onclick="md.clipboard(this)">copy</button><code>'  + block + '</code></pre>'
+  }
+
+  // copy to clipboard for code-block
+  md.clipboard = function (e) {
+    navigator.clipboard.writeText( e.parentNode.innerText.replace('copy\n','') )
+    e.innerText = 'copied'
+  }
+
+  //===== parse markdown string into HTML string (exclude code-block)
+  md.parser = function( mdstr ) {
+  
+    // apply yaml variables
+    for (var name in this.yaml) mdstr = mdstr.replace( new RegExp('\{\{\\s*'+name+'\\s*\}\}', 'gm'), this.yaml[name] )
+    
+    // table syntax
+    mdstr = mdstr.replace(/\n(.+?)\n.*?\-\-\s?\|\s?\-\-.*?\n([\s\S]*?)\n\s*?\n/g, function (m,p1,p2) {
+        var thead = p1.replace(/^\|(.+)/gm,'$1').replace(/(.+)\|$/gm,'$1').replace(/\|/g,'<th>')
+        var tbody = p2.replace(/^\|(.+)/gm,'$1').replace(/(.+)\|$/gm,'$1')
+        tbody = tbody.replace(/(.+)/gm,'<tr><td>$1</td></tr>').replace(/\|/g,'<td>')
+        return '\n<table>\n<thead>\n<th>' + thead + '\n</thead>\n<tbody>' + tbody + '\n</tbody></table>\n\n' 
+    } )   
+
+    // horizontal rule => <hr> 
+    mdstr = mdstr.replace(/^-{3,}|^\_{3,}|^\*{3,}$/gm, '<hr>').replace(/\n\n<hr\>/g, '\n<br><hr>')
+
+    // header => <h1>..<h5> 
+    mdstr = mdstr.replace(/^##### (.*?)\s*#*$/gm, '<h5>$1</h5>')
+              .replace(/^#### (.*?)\s*#*$/gm, '<h4>$1</h4>')
+              .replace(/^### (.*?)\s*#*$/gm, '<h3>$1</h3>')
+              .replace(/^## (.*?)\s*#*$/gm, '<h2>$1</h2>')
+              .replace(/^# (.*?)\s*#*$/gm, '<h1>$1</h1>')
+              .replace(/^<h(\d)\>(.*?)\s*{(.*)}\s*<\/h\d\>$/gm, '<h$1 id="$3">$2</h$1>')
+        
+    // inline code-block: `code-block` => <code>code-block</code>    
+    mdstr = mdstr.replace(/``(.*?)``/gm, function(m,p){ return '<code>' + md.formatTag(p).replace(/`/g,'&#96;') + '</code>'} ) 
+    mdstr = mdstr.replace(/`(.*?)`/gm, '<code>$1</code>' )
+        
+    // blockquote, max 2 levels => <blockquote>{text}</blockquote>
+    mdstr = mdstr.replace(/^\>\> (.*$)/gm, '<blockquote><blockquote>$1</blockquote></blockquote>')
+    mdstr = mdstr.replace(/^\> (.*$)/gm, '<blockquote>$1</blockquote>')
+    mdstr = mdstr.replace(/<\/blockquote\>\n<blockquote\>/g, '\n<br>' )
+    mdstr = mdstr.replace(/<\/blockquote\>\n<br\><blockquote\>/g, '\n<br>' )
+                  
+    // image syntax: ![title](url) => <img alt="title" src="url" />          
+    mdstr = mdstr.replace(/!\[(.*?)\]\((.*?) "(.*?)"\)/gm, '<img alt="$1" src="$2" $3 />')
+    mdstr = mdstr.replace(/!\[(.*?)\]\((.*?)\)/gm, '<img alt="$1" src="$2" width="90%" />')
+                  
+    // links syntax: [title "title"](url) => <a href="url" title="title">text</a>          
+    mdstr = mdstr.replace(/\[(.*?)\]\((.*?) "new"\)/gm, '<a href="$2" target=_new>$1</a>')
+    mdstr = mdstr.replace(/\[(.*?)\]\((.*?) "(.*?)"\)/gm, '<a href="$2" title="$3">$1</a>')
+    mdstr = mdstr.replace(/([<\s])(https?\:\/\/.*?)([\s\>])/gm, '$1<a href="$2">$2</a>$3')
+    mdstr = mdstr.replace(/\[(.*?)\]\(\)/gm, '<a href="$1">$1</a>')
+    mdstr = mdstr.replace(/\[(.*?)\]\((.*?)\)/gm, '<a href="$2">$1</a>')
+                  
+    // unordered/ordered list, max 2 levels  => <ul><li>..</li></ul>, <ol><li>..</li></ol>
+    mdstr = mdstr.replace(/^[\*+-][ .](.*)/gm, '<ul><li>$1</li></ul>' )
+    mdstr = mdstr.replace(/^\d\d?[ .](.*)/gm, '<ol><li>$1</li></ol>' )
+    mdstr = mdstr.replace(/^\s{2,6}[\*+-][ .](.*)/gm, '<ul><ul><li>$1</li></ul></ul>' )
+    mdstr = mdstr.replace(/^\s{2,6}\d[ .](.*)/gm, '<ul><ol><li>$1</li></ol></ul>' )
+    mdstr = mdstr.replace(/<\/[ou]l\>\n\n?<[ou]l\>/g, '\n' )
+    mdstr = mdstr.replace(/<\/[ou]l\>\n<[ou]l\>/g, '\n' )
+                  
+    // text decoration: bold, italic, underline, strikethrough, highlight                
+    mdstr = mdstr.replace(/\*\*\*(\w.*?[^\\])\*\*\*/gm, '<b><em>$1</em></b>')
+    mdstr = mdstr.replace(/\*\*(\w.*?[^\\])\*\*/gm, '<b>$1</b>')
+    mdstr = mdstr.replace(/\*(\w.*?[^\\])\*/gm, '<em>$1</em>')
+    mdstr = mdstr.replace(/___(\w.*?[^\\])___/gm, '<b><em>$1</em></b>')
+    mdstr = mdstr.replace(/__(\w.*?[^\\])__/gm, '<u>$1</u>')
+    // mdstr = mdstr.replace(/_(\w.*?[^\\])_/gm, '<u>$1</u>')  // NOT support!! 
+    mdstr = mdstr.replace(/\^\^\^(.+?)\^\^\^/gm, '<mark>$1</mark>')
+    mdstr = mdstr.replace(/\^\^(\w.*?)\^\^/gm, '<ins>$1</ins>')
+    mdstr = mdstr.replace(/~~(\w.*?)~~/gm, '<del>$1</del>')
+                  
+    // line break and paragraph => <br/> <p>                
+    mdstr = mdstr.replace(/  \n/g, '\n<br/>').replace(/\n\s*\n/g, '\n<p>\n')
+        
+    // indent as code-block          
+    mdstr = mdstr.replace(/^ {4,10}(.*)/gm, function(m,p) { return '<pre><code>' + md.formatTag(p) + '</code></pre>'} )
+    mdstr = mdstr.replace(/^\t(.*)/gm, function(m,p) { return '<pre><code>' + md.formatTag(p) + '</code></pre>'} )
+    mdstr = mdstr.replace(/<\/code\><\/pre\>\n<pre\><code\>/g, '\n' )
+
+    // Escaping Characters                
+    return mdstr.replace(/\\([`_~\*\+\-\.\^\\\<\>\(\)\[\]])/gm, '$1' )
+  }
+
+  //===== parse markdown string into HTML content (cater code-block)
+  md.html = function (mdText) { 
+    // replace \r\n to \n, and handle front matter for simple YAML
+    mdText = mdText.replace(/\r\n/g, '\n').replace( /^---+\s*\n([\s\S]*?)\n---+\s*\n/, md.formatYAML )
+    // handle code-block.
+    mdText = mdText.replace(/\n~~~/g,'\n```').replace(/\n``` *(.*?)\n([\s\S]*?)\n``` *\n/g, md.formatCode)
+    
+    // split by "<code>", skip for code-block and process normal text
+    var pos1=0, pos2=0, mdHTML = ''
+    while ( (pos1 = mdText.indexOf('<code>')) >= 0 ) {
+      pos2 = mdText.indexOf('</code>', pos1 )
+      mdHTML += md.after( md.parser( md.before( mdText.substr(0,pos1) ) ) )
+      mdHTML += mdText.substr(pos1, (pos2>0? pos2-pos1+7 : mdtext.length) )
+      mdText = mdText.substr( pos2 + 7 )
+    }
+
+    return '<div class="markdown">' + mdHTML + md.after( md.parser( md.before(mdText) ) ) + '</div>'
+  }
+  
+  //===== TOC support
+  md.toc = function (srcDiv, tocDiv, options ) {
+
+    // select elements, set title
+    var tocSelector = (options&&options.css) || 'h1,h2,h3,h4'
+    var tocTitle = (options&&options.title) || 'Table of Contents'
+    var toc = document.getElementById(srcDiv).querySelectorAll( tocSelector )
+    var html = '<div class="toc"><ul>' + (tocTitle=='none'? '' : '<h3>' + tocTitle + '</h3>');
+    
+    // loop for each element,add <li> element with class in TAG name.
+    for (var i=0; i<toc.length; i++ ) {
+      if (toc[i].id.substr(0,6)=='no-toc') continue;
+      if (!toc[i].id) toc[i].id = "toc-item-" + i;
+      html += '<li class="' + toc[i].nodeName + '" title="#' + toc[i].id + '" onclick="location=this.title">' 
+      html += toc[i].textContent + '</a></li>';
+    }
+    
+    document.getElementById(tocDiv).innerHTML = html + "</ul>";
+
+    //===== scrollspy support (ps: add to document.body if element(scrollspy) not found)
+    if ( options && options.scrollspy ) {
+      
+      (document.getElementById(options.scrollspy)||document).onscroll = function () {
+      
+          // get TOC elements, and viewport position   
+          var list = document.getElementById(tocDiv).querySelectorAll('li')
+          var divScroll = document.getElementById(options.scrollspy) || document.documentElement
+          var divHeight = divScroll.clientHeight || divScroll.offsetHeight 
+          
+          // loop for each TOC element, add/remove scrollspy class
+          for (var i=0; i<list.length; i++) {
+            var div = document.getElementById( list[i].title.substr(1) )
+            var pos = (div? div.offsetTop - divScroll.scrollTop + 10: 0 )  
+            if ( pos>0 && pos<divHeight ) {
+              list[i].className = list[i].className.replace('active','') + ' active' // classList.add( 'active' );
+            } else {
+              list[i].className = list[i].className.replace('active','') // classList.remove( 'active' );
+            }
+          }
+        }
+      
+    }
+    //===== end of scrollspy
+  }  
+  
+  if (typeof exports==='object') { 
+    module.exports=md;
+  } else if (typeof define==='function') { 
+     define(function(){return md;});
+  } else {
+     this.md=md;
+  }
+}).call( function(){ return this||(typeof window!=='undefined'?window:global)}() );
+</file>
+
+<file path="resume_template/resume.css">
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Roboto:wght@400&display=swap');
+
+/* Reset generale per uniformità */
+body, h2, h3, h4, p, ul, ol {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+body {
+    line-height: 1.6;
+    margin: auto;
+    padding: 20px;
+    max-width: 1024px;
+    color: #333;
+    background-color: #f8f9fa;
+}
+
+/* Header Style */
+header {
+    background-color: #e9ecef; /* Sfondo leggermente più scuro */
+    padding: 15px 20px 0 20px; /* Padding: 15px sopra, 20px a destra e a sinistra, 0px sotto */
+    border-bottom: 2px solid #d1d1d1; /* Bordo sottile per separare il header dal resto del contenuto */
+    font-family: 'Roboto', sans-serif; /* Font per il testo generico */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-info {
+    flex: 1;
+}
+
+.header-info h1 {
+    margin: 0;
+    font-size: 30px; /* Dimensione del font aumentata per il nome */
+    color: #000; /* Colore nero per il testo del nome */
+    font-family: 'Montserrat', sans-serif; /* Font più accattivante per il nome */
+}
+
+.header-info a {
+    color: #0056b3; /* Colore blu intenso per i link */
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.header-info a:hover {
+    text-decoration: underline;
+}
+
+.contact-info {
+    flex: 0;
+    text-align: center; /* Centratura del testo */
+}
+
+.contact-info a {
+    display: block;
+    color: #0056b3; /* Colore blu intenso per i link */
+    text-decoration: none;
+    margin-bottom: 5px; /* Spaziatura tra i contatti */
+    font-size: 14px; /* Dimensione del font per i dettagli di contatto */
+    font-family: 'Roboto', sans-serif; /* Font moderno per i dettagli di contatto */
+    font-weight: bold;
+}
+
+.contact-info a:hover {
+    color: #ff5722; /* Colore arancione per i link al passaggio del mouse */
+}
+
+.contact-info a:visited {
+    color: #666; /* Colore grigio scuro per i link visitati */
+}
+
+/* Stile per i titoli delle sezioni */
+h2 {
+    font-size: 24px;
+    color: #0056b3;
+    border-bottom: 1px solid #d1d1d1;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Stile per le esperienze professionali */
+h3 {
+    font-size: 20px;
+    color: #212529;
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+em {
+    color: #555;
+}
+
+ol, ul {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Stile per le sezioni secondarie */
+p {
+    margin-bottom: 15px;
+}
+
+b {
+    color: #212529;
+}
+
+/* Stile per i link */
+a {
+    color: #0056b3;
+}
+
+a:hover {
+    color: #ff5722;
+    text-decoration: underline;
+}
+
+/* Responsività per schermi più piccoli */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .contact-info {
+        text-align: center;
+        margin-top: 10px;
+    }
+}
+
+.markdown code { background:#f0f0f0; color:navy; border-radius:6px; padding:2px; } 
+.markdown pre  { background:#f0f0f0; margin:12px; border:1px solid #ddd; padding:20px 12px; border-radius:6px; } 
+.markdown pre:hover button { display:block; }
+.markdown pre button { display:none; position:relative; float:right; top:-16px }
+.markdown blockquote { background:#f0f0f0; border-left:6px solid grey; padding:8px }
+.markdown table { margin:12px; border-collapse: collapse; }
+.markdown th    { border:1px solid grey; background:lightgrey; padding:6px; } 
+.markdown td    { border:1px solid grey;  padding:6px; }
+.markdown tr:nth-child(even) {  background:#f0f0f0;  }
+.markdown ins { color:#890604 } 
+.markdown rem { color:#198964 }
+.toc ul  { padding: 0 12px; }
+.toc h3  { color:#0057b7; border-bottom:1px dotted  grey }
+.toc .H1 { list-style-type:none; font-weight:600; margin:4px; background:#eee }
+.toc .H2 { list-style-type:none; font-weight:600; margin:4px; }
+.toc .H3 { margin-left:2em }
+.toc .H4 { margin-left:4em }
+.toc .active { color:#0057b7  }
+.toc li:hover { background:#f0f0f0 }
+</file>
+
+<file path="src/api/endpoints.py">
+from fastapi import APIRouter, HTTPException
+from pathlib import Path
+from core.session_manager import SessionManager
+from src.models.schemas import ActiveSession, ActiveSessionsResponse, BotConfig, BotResponse, BotStatus, BotStatusResponse
+
+router = APIRouter()
+manager = SessionManager()
+
+@router.post("/start", response_model=BotResponse)
+async def start_bot(config: BotConfig):
+    """Start a new bot session with given configuration"""
+    try:
+        result = manager.start_bot(
+            session_id=config.session_id,
+            config_path=Path(config.config_path),
+            secrets_path=Path(config.secrets_path),
+            resume_path=Path(config.resume_path) if config.resume_path else None
+        )
+        return BotResponse(
+            status=BotStatus.RUNNING if result['status'] == 'success' else BotStatus.ERROR,
+            message=result['message'],
+            session_id=config.session_id
+        )
+    except Exception as e:
+        return BotResponse(
+            status=BotStatus.ERROR,
+            message=str(e)
+        )
+
+@router.get("/status/{session_id}", response_model=BotStatusResponse)
+async def get_status(session_id: str):
+    """Get current status of a bot session"""
+    result = manager.get_status(session_id)
+    return BotStatusResponse(
+        status=BotStatus.RUNNING if result.get('is_running', False) else BotStatus.STOPPED,
+        message=result['message'],
+        session_id=session_id,
+        is_running=result.get('is_running', False)
+    )
+
+@router.post("/stop", response_model=BotResponse)
+async def stop_bot(session_id: str):
+    """
+    Stop a running bot session
+    
+    Args:
+        session_id: ID of the session to stop (from /start response)
+        
+    Returns:
+        BotResponse with operation status:
+        - status: "stopped" on success, "error" if session not found
+        - message: Detailed status message
+        - session_id: The stopped session ID
+    """
+    result = manager.stop_bot(session_id)
+    
+    return BotResponse(
+        status=BotStatus.STOPPED if result['status'] == 'success' else BotStatus.ERROR,
+        message=result['message'],
+        session_id=session_id,
+        details={
+            'force_terminated': result.get('force_terminated', False),
+            'active_time': result.get('active_time')
+        }
+    )
+
+@router.get("/sessions/active", response_model=ActiveSessionsResponse)
+async def get_active_sessions():
+    """
+    Get list of all currently active bot sessions
+    
+    Returns:
+        - List of active sessions with their stats
+        - Total number of jobs applied across all sessions
+        - Total count of active sessions
+    """
+    result = manager.get_active_sessions()
+    return ActiveSessionsResponse(
+        active_sessions=[
+            ActiveSession(**session) for session in result['active_sessions']
+        ],
+        # total_jobs_applied=result['total_jobs_applied'],
+        total_active_sessions=result['total_active_sessions']
+    )
+</file>
+
+<file path="src/core/original_files/gpt.py">
+import json
+import os
+import re
+import textwrap
+from datetime import datetime
+from typing import Dict, List
+
+from dotenv import load_dotenv
+from langchain_core.messages.ai import AIMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompt_values import StringPromptValue
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from Levenshtein import distance
+
+from src.core.original_files import strings
+
+load_dotenv()
+
+
+class LLMLogger:
+    
+    def __init__(self, llm: ChatOpenAI):
+        self.llm = llm
+
+    @staticmethod
+    def log_request(prompts, parsed_reply: Dict[str, Dict]):
+        calls_log = os.path.join(os.getcwd(), "open_ai_calls.json")
+        if isinstance(prompts, StringPromptValue):
+            prompts = prompts.text
+        elif isinstance(prompts, Dict):
+            # Convert prompts to a dictionary if they are not in the expected format
+            prompts = {
+                f"prompt_{i+1}": prompt.content
+                for i, prompt in enumerate(prompts.messages)
+            }
+        else:
+            prompts = {
+                f"prompt_{i+1}": prompt.content
+                for i, prompt in enumerate(prompts.messages)
+            }
+
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Extract token usage details from the response
+        token_usage = parsed_reply["usage_metadata"]
+        output_tokens = token_usage["output_tokens"]
+        input_tokens = token_usage["input_tokens"]
+        total_tokens = token_usage["total_tokens"]
+
+        # Extract model details from the response
+        model_name = parsed_reply["response_metadata"]["model_name"]
+        prompt_price_per_token = 0.00000015
+        completion_price_per_token = 0.0000006
+
+        # Calculate the total cost of the API call
+        total_cost = (input_tokens * prompt_price_per_token) + (
+            output_tokens * completion_price_per_token
+        )
+
+        # Create a log entry with all relevant information
+        log_entry = {
+            "model": model_name,
+            "time": current_time,
+            "prompts": prompts,
+            "replies": parsed_reply["content"],  # Response content
+            "total_tokens": total_tokens,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_cost": total_cost,
+        }
+
+        # Write the log entry to the log file in JSON format
+        with open(calls_log, "a", encoding="utf-8") as f:
+            json_string = json.dumps(log_entry, ensure_ascii=False, indent=4)
+            f.write(json_string + "\n")
+
+
+class LoggerChatModel:
+
+    def __init__(self, llm: ChatOpenAI):
+        self.llm = llm
+
+    def __call__(self, messages: List[Dict[str, str]]) -> str:
+        # Call the LLM with the provided messages and log the response.
+        reply = self.llm(messages)
+        parsed_reply = self.parse_llmresult(reply)
+        LLMLogger.log_request(prompts=messages, parsed_reply=parsed_reply)
+        return reply
+
+    def parse_llmresult(self, llmresult: AIMessage) -> Dict[str, Dict]:
+        # Parse the LLM result into a structured format.
+        content = llmresult.content
+        response_metadata = llmresult.response_metadata
+        id_ = llmresult.id
+        usage_metadata = llmresult.usage_metadata
+
+        parsed_result = {
+            "content": content,
+            "response_metadata": {
+                "model_name": response_metadata.get("model_name", ""),
+                "system_fingerprint": response_metadata.get("system_fingerprint", ""),
+                "finish_reason": response_metadata.get("finish_reason", ""),
+                "logprobs": response_metadata.get("logprobs", None),
+            },
+            "id": id_,
+            "usage_metadata": {
+                "input_tokens": usage_metadata.get("input_tokens", 0),
+                "output_tokens": usage_metadata.get("output_tokens", 0),
+                "total_tokens": usage_metadata.get("total_tokens", 0),
+            },
+        }
+        return parsed_result
+
+
+class GPTAnswerer:
+    def __init__(self, openai_api_key):
+        self.llm_cheap = LoggerChatModel(
+            ChatOpenAI(
+                model_name="gpt-4o-mini", openai_api_key=openai_api_key, temperature=0.8
+            )
+        )
+
+    @property
+    def job_description(self):
+        return self.job.description
+
+    @staticmethod
+    def find_best_match(text: str, options: list[str]) -> str:
+        distances = [
+            (option, distance(text.lower(), option.lower())) for option in options
+        ]
+        best_option = min(distances, key=lambda x: x[1])[0]
+        return best_option
+
+    @staticmethod
+    def _remove_placeholders(text: str) -> str:
+        text = text.replace("PLACEHOLDER", "")
+        return text.strip()
+
+    @staticmethod
+    def _preprocess_template_string(template: str) -> str:
+        # Preprocess a template string to remove unnecessary indentation.
+        return textwrap.dedent(template)
+
+    def set_resume(self, resume):
+        self.resume = resume
+
+    def set_job(self, job):
+        self.job = job
+        self.job.set_summarize_job_description(
+            self.summarize_job_description(self.job.description)
+        )
+
+    def summarize_job_description(self, text: str) -> str:
+        # strings.summarize_prompt_template = self._preprocess_template_string(
+        #     strings.summarize_prompt_template
+        # )
+        # prompt = ChatPromptTemplate.from_template(strings.summarize_prompt_template)
+        # chain = prompt | self.llm_cheap | StrOutputParser()
+        # output = chain.invoke({"text": text})
+        output = text[:100]
+        return output
+    
+
+    def get_resume_html(self):
+        resume_markdown_prompt = ChatPromptTemplate.from_template(strings.resume_markdown_template)
+        fusion_job_description_resume_prompt = ChatPromptTemplate.from_template(strings.fusion_job_description_resume_template)
+        resume_markdown_chain = resume_markdown_prompt | self.llm_cheap | StrOutputParser()
+        fusion_job_description_resume_chain = fusion_job_description_resume_prompt | self.llm_cheap | StrOutputParser()
+        
+        casual_markdown_path = os.path.abspath("resume_template/casual_markdown.js")
+        reorganize_header_path = os.path.abspath("resume_template/reorganizeHeader.js")
+        resume_css_path = os.path.abspath("resume_template/resume.css")
+
+        html_template = strings.html_template.format(casual_markdown=casual_markdown_path, reorganize_header=reorganize_header_path, resume_css=resume_css_path)
+        composed_chain = (
+            resume_markdown_chain
+            | (lambda output: {"job_description": self.job.summarize_job_description, "formatted_resume": output})
+            | fusion_job_description_resume_chain
+            | (lambda formatted_resume: html_template + formatted_resume)
+        )
+        try:
+            output = composed_chain.invoke({
+                "resume": self.resume,
+                "job_description": self.job.summarize_job_description
+            })
+            return output
+        except Exception as e:
+            #print(f"Error during elaboration: {e}")
+            pass
+        
+
+    def _create_chain(self, template: str):
+        prompt = ChatPromptTemplate.from_template(template)
+        return prompt | self.llm_cheap | StrOutputParser()
+
+    def answer_question_textual_wide_range(self, question: str) -> str:
+        # Define chains for each section of the resume
+        chains = {
+            "personal_information": self._create_chain(strings.personal_information_template),
+            "self_identification": self._create_chain(strings.self_identification_template),
+            "legal_authorization": self._create_chain(strings.legal_authorization_template),
+            "work_preferences": self._create_chain(strings.work_preferences_template),
+            "education_details": self._create_chain(strings.education_details_template),
+            "experience_details": self._create_chain(strings.experience_details_template),
+            "projects": self._create_chain(strings.projects_template),
+            "availability": self._create_chain(strings.availability_template),
+            "salary_expectations": self._create_chain(strings.salary_expectations_template),
+            "certifications": self._create_chain(strings.certifications_template),
+            "languages": self._create_chain(strings.languages_template),
+            "interests": self._create_chain(strings.interests_template),
+            "cover_letter": self._create_chain(strings.coverletter_template),
+        }
+        section_prompt = (
+            f"For the following question: '{question}', which section of the resume is relevant? "
+            "Respond with one of the following: Personal information, Self Identification, Legal Authorization, "
+            "Work Preferences, Education Details, Experience Details, Projects, Availability, Salary Expectations, "
+            "Certifications, Languages, Interests, Cover letter"
+        )
+        prompt = ChatPromptTemplate.from_template(section_prompt)
+        chain = prompt | self.llm_cheap | StrOutputParser()
+        output = chain.invoke({"question": question})
+        section_name = output.lower().replace(" ", "_")
+        if section_name == "cover_letter":
+            chain = chains.get(section_name)
+            output= chain.invoke({"resume": self.resume, "job_description": self.job_description})
+            return output
+        resume_section = getattr(self.resume, section_name, None)
+        if resume_section is None:
+            raise ValueError(f"Section '{section_name}' not found in the resume.")
+        chain = chains.get(section_name)
+        if chain is None:
+            raise ValueError(f"Chain not defined for section '{section_name}'")
+        return chain.invoke({"resume_section": resume_section, "question": question})
+
+    def answer_question_textual(self, question: str) -> str:
+        template = self._preprocess_template_string(strings.resume_stuff_template)
+        prompt = ChatPromptTemplate.from_template(template)
+        chain = prompt | self.llm_cheap | StrOutputParser()
+        output = chain.invoke({"resume": self.resume, "question": question})
+        return output
+
+    def answer_question_numeric(self, question: str, default_experience: int = 3) -> int:
+        func_template = self._preprocess_template_string(strings.numeric_question_template)
+        prompt = ChatPromptTemplate.from_template(func_template)
+        chain = prompt | self.llm_cheap | StrOutputParser()
+        output_str = chain.invoke(
+            {
+                "resume": self.resume, 
+                "question": question, 
+                "default_experience": default_experience, 
+                "RAL": self.resume.salary_expectations.annualSalary,
+            }
+        )
+        try:
+            output = self.extract_number_from_string(output_str)
+        except ValueError:
+            output = default_experience
+        return output
+
+    def extract_number_from_string(self, output_str):
+        numbers = re.findall(r"\d+", output_str)
+        if numbers:
+            return int(numbers[0])
+        else:
+            raise ValueError("No numbers found in the string")
+
+    def answer_question_from_options(self, question: str, options: list[str]) -> str:
+        func_template = self._preprocess_template_string(strings.options_template)
+        prompt = ChatPromptTemplate.from_template(func_template)
+        chain = prompt | self.llm_cheap | StrOutputParser()
+        output_str = chain.invoke({"resume": self.resume, "question": question, "options": options})
+        best_option = self.find_best_match(output_str, options)
+        return best_option
+</file>
+
+<file path="src/core/original_files/job.py">
+from dataclasses import dataclass
+
+@dataclass
+class Job:
+    title: str
+    company: str
+    location: str
+    link: str
+    apply_method: str
+    description: str = ""
+    summarize_job_description: str = ""
+
+    def set_summarize_job_description(self, summarize_job_description):
+        self.summarize_job_description = summarize_job_description
+
+    def set_job_description(self, description):
+        self.description = description
+
+    def formatted_job_information(self):
+        """
+        Formats the job information as a markdown string.
+        """
+        job_information = f"""
+        # Job Description
+        ## Job Information 
+        - Position: {self.title}
+        - At: {self.company}
+        - Location: {self.location}
+        
+        ## Description
+        {self.description or 'No description provided.'}
+        """
+        return job_information.strip()
+</file>
+
+<file path="src/core/original_files/linkedIn_authenticator.py">
+import time
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+class LinkedInAuthenticator:
+    
+    def __init__(self, driver=None):
+        self.driver = driver
+        self.email = ""
+        self.password = ""
+
+    def set_secrets(self, email, password):
+        self.email = email
+        self.password = password
+
+    def start(self):
+        """Start the Chrome browser and attempt to log in to LinkedIn."""
+        print("Starting Chrome browser to log in to LinkedIn.")
+        self.driver.get('https://www.linkedin.com')
+        self.wait_for_page_load()
+        if not self.is_logged_in():
+            self.handle_login()
+
+    def handle_login(self):
+        """Handle the LinkedIn login process."""
+        print("Navigating to the LinkedIn login page...")
+        self.driver.get("https://www.linkedin.com/login")
+        try:
+            self.enter_credentials()
+            self.submit_login_form()
+        except NoSuchElementException:
+            print("Could not log in to LinkedIn. Please check your credentials.")
+        time.sleep(3) #TODO fix better
+        self.handle_security_check()
+
+    def enter_credentials(self):
+        """Enter the user's email and password into the login form."""
+        try:
+            email_field = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.ID, "username"))
+            )
+            email_field.send_keys(self.email)
+            password_field = self.driver.find_element(By.ID, "password")
+            password_field.send_keys(self.password)
+        except TimeoutException:
+            print("Login form not found. Aborting login.")
+
+    def submit_login_form(self):
+        """Submit the LinkedIn login form."""
+        try:
+            login_button = self.driver.find_element(By.XPATH, '//button[@type="submit"]')
+            login_button.click()
+        except NoSuchElementException:
+            print("Login button not found. Please verify the page structure.")
+
+    def handle_security_check(self):
+        """Handle LinkedIn security checks if triggered."""
+        try:
+            WebDriverWait(self.driver, 4).until(
+                EC.url_contains('https://www.linkedin.com/checkpoint/challengesV2/')
+            )
+            print("Security checkpoint detected. Please complete the challenge.")
+            WebDriverWait(self.driver, 4).until(
+                EC.url_contains('https://www.linkedin.com/feed/')
+            )
+            print("Security check completed")
+        except TimeoutException:
+            print("Security check not completed. Please try again later.")
+
+    def is_logged_in(self):
+        """Check if the user is already logged in to LinkedIn."""
+        self.driver.get('https://www.linkedin.com/feed')
+        try:
+            WebDriverWait(self.driver, 2).until(
+                EC.presence_of_element_located((By.CLASS_NAME, 'share-box-feed-entry__trigger'))
+            )
+            buttons = self.driver.find_elements(By.CLASS_NAME, 'share-box-feed-entry__trigger')
+            if any(button.text.strip() == 'Start a post' for button in buttons):
+                print("User is already logged in.")
+                return True
+        except TimeoutException:
+            pass
+        return False
+
+    def wait_for_page_load(self, timeout=2):
+        """Wait for the page to fully load."""
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                lambda d: d.execute_script('return document.readyState') == 'complete'
+            )
+        except TimeoutException:
+            print("Page load timed out.")
+</file>
+
+<file path="src/core/original_files/linkedIn_bot_facade.py">
+class LinkedInBotFacade:
+
+    def __init__(self, login_component, apply_component):
+        self.login_component = login_component
+        self.apply_component = apply_component
+        self.state = {
+            "credentials_set": False,
+            "api_key_set": False,
+            "resume_set": False,
+            "gpt_answerer_set": False,
+            "parameters_set": False,
+            "logged_in": False
+        }
+
+    def set_resume(self, resume):
+        if not resume:
+            raise ValueError("Plain text resume cannot be empty.")
+        self.resume = resume
+        self.state["resume_set"] = True
+
+    def set_secrets(self, email, password):  # Aggiunto openai_api_key
+        if not email or not password :
+            raise ValueError("Email and password cannot be empty.")
+        self.email = email
+        self.password = password
+        self.state["credentials_set"] = True
+
+    def set_gpt_answerer(self, gpt_answerer_component):
+        self.gpt_answerer = gpt_answerer_component 
+        self.gpt_answerer.set_resume(self.resume)
+        self.apply_component.set_gpt_answerer(self.gpt_answerer)
+        self.state["gpt_answerer_set"] = True
+
+    def set_parameters(self, parameters):
+        if not parameters:
+            raise ValueError("Parameters cannot be None or empty.")
+        self.parameters = parameters
+        self.apply_component.set_parameters(parameters)
+        self.state["parameters_set"] = True
+
+    def start_login(self):
+        if not self.state["credentials_set"]:
+            raise ValueError("Email and password must be set before logging in.")
+        self.login_component.set_secrets(self.email, self.password)
+        self.login_component.start()
+        self.state["logged_in"] = True
+
+    def start_apply(self):
+        if not self.state["logged_in"]:
+            raise ValueError("You must be logged in before applying.")
+        if not self.state["resume_set"]:
+            raise ValueError("Plain text resume must be set before applying.")
+        if not self.state["gpt_answerer_set"]:
+            raise ValueError("GPT Answerer must be set before applying.")
+        if not self.state["parameters_set"]:
+            raise ValueError("Parameters must be set before applying.")
+        self.apply_component.start_applying()
+</file>
+
+<file path="src/core/original_files/linkedIn_easy_applier.py">
+import base64
+import csv
+import os
+import random
+import tempfile
+import time
+import traceback
+from datetime import date
+from typing import List, Optional, Any, Tuple
+import uuid
+from httpcore import TimeoutException
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select, WebDriverWait
+import tempfile
+import time
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import io
+import time
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from xhtml2pdf import pisa
+
+from src.core.original_files.logger import logger
+from src.core.original_files import utils    
+
+
+csv_path = os.path.join("data_folder", "output", "old_Questions.csv")
+os.makedirs(os.path.dirname(csv_path), exist_ok=True)  # ensure directory exists
+
+class LinkedInEasyApplier:
+    def __init__(self, driver: Any, resume_dir: Optional[str], set_old_answers: List[Tuple[str, str, str]], gpt_answerer: Any):
+        if resume_dir is None or not os.path.exists(resume_dir):
+            resume_dir = None
+        self.driver = driver
+        self.resume_dir = resume_dir
+        self.set_old_answers = set_old_answers
+        self.gpt_answerer = gpt_answerer
+
+    def job_apply(self, job: Any):
+        self.driver.get(job.link)
+        # time.sleep(random.uniform(1.3, 2.5))
+        try:
+            easy_apply_button = self._find_easy_apply_button()
+            job_description = self._get_job_description()
+            job.set_job_description(job_description)
+            easy_apply_button.click()
+            self.gpt_answerer.set_job(job)
+            self._fill_application_form()
+        except Exception:
+            tb_str = traceback.format_exc()
+            self._discard_application()
+            raise Exception(f"Failed to apply to job! Original exception: \nTraceback:\n{tb_str}")
+
+
+    def _find_easy_apply_button(self) -> WebElement:
+        buttons = WebDriverWait(self.driver, 5).until(
+            EC.presence_of_all_elements_located(
+                (By.XPATH, '//button[contains(@class, "jobs-apply-button") and contains(., "Easy Apply")]')
+            )
+        )
+        for index, button in enumerate(buttons):
+            try:
+                return WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, f'(//button[contains(@class, "jobs-apply-button") and contains(., "Easy Apply")])[{index + 1}]')
+                    )
+                )
+            except Exception as e:
+                pass
+        raise Exception("No clickable 'Easy Apply' button found")
+
+    def _get_job_description(self) -> str:
+        try:
+            see_more_button = self.driver.find_element(By.XPATH, '//button[@aria-label="Click to see more description"]')
+            see_more_button.click()
+            time.sleep(.2)
+            description = self.driver.find_element(By.CLASS_NAME, 'jobs-description-content__text--stretch').text
+            # self._scroll_page()
+            return description
+        except NoSuchElementException:
+            tb_str = traceback.format_exc()
+            raise Exception("Job description 'See more' button not found: \nTraceback:\n{tb_str}")
+        except Exception :
+            tb_str = traceback.format_exc()
+            raise Exception(f"Error getting Job description: \nTraceback:\n{tb_str}")
+
+    def _scroll_page(self) -> None:
+        scrollable_element = self.driver.find_element(By.TAG_NAME, 'html')
+        utils.scroll_slow(self.driver, scrollable_element, step=300, reverse=False)
+        utils.scroll_slow(self.driver, scrollable_element, step=300, reverse=True)
+
+    def _fill_application_form(self):
+        while True:
+            self.fill_up()
+            if self._next_or_submit():
+                break
+
+    def _next_or_submit(self):
+        next_button = self.driver.find_element(By.CLASS_NAME, "artdeco-button--primary")
+        button_text = next_button.text.lower()
+        if 'submit application' in button_text:
+            self._unfollow_company()
+            time.sleep(random.uniform(.5, 1.))
+            next_button.click()
+            time.sleep(random.uniform(1.5, 2.5))
+            return True
+        time.sleep(random.uniform(.5, 1.5))
+        next_button.click()
+        time.sleep(random.uniform(1.5, 2.))
+
+        # time.sleep(random.uniform(3.0, 5.0))
+        self._check_for_errors()
+
+
+    def _unfollow_company(self) -> None:
+        try:
+            follow_checkbox = self.driver.find_element(
+                By.XPATH, "//label[contains(.,'to stay up to date with their page.')]")
+            follow_checkbox.click()
+        except Exception as e:
+            pass
+
+    def _check_for_errors(self) -> None:
+        error_elements = self.driver.find_elements(By.CLASS_NAME, 'artdeco-inline-feedback--error')
+        if error_elements:
+            raise Exception(f"Failed answering or file upload. {str([e.text for e in error_elements])}")
+
+    def _discard_application(self) -> None:
+        try:
+            self.driver.find_element(By.CLASS_NAME, 'artdeco-modal__dismiss').click()
+            time.sleep(random.uniform(3, 5))
+            self.driver.find_elements(By.CLASS_NAME, 'artdeco-modal__confirm-dialog-btn')[0].click()
+            time.sleep(random.uniform(3, 5))
+        except Exception as e:
+            pass
+
+    def fill_up(self) -> None:
+        try:
+            # easy_apply_content = self.driver.find_element(By.CLASS_NAME, 'jobs-easy-apply-content')
+            pb4_elements = self.driver.find_elements(By.CLASS_NAME, 'fb-dash-form-element')
+            for element in pb4_elements:
+                self._process_form_element(element)
+        except Exception as e:
+            pass
+
+    def _process_form_element(self, element: WebElement) -> None:
+        try:
+            if self._is_upload_field(element):
+                self._handle_upload_fields(element)
+            else:
+                self._fill_additional_questions(element)
+        except Exception as e:
+            pass
+
+    def _is_upload_field(self, element: WebElement) -> bool:
+        try:
+            element.find_element(By.XPATH, ".//input[@type='file']")
+            return True
+        except NoSuchElementException:
+            return False
+
+    def _handle_upload_fields(self, element: WebElement) -> None:
+        file_upload_elements = self.driver.find_elements(By.XPATH, "//input[@type='file']")
+        for element in file_upload_elements:
+            parent = element.find_element(By.XPATH, "..")
+            self.driver.execute_script("arguments[0].classList.remove('hidden')", element)
+            if 'resume' in parent.text.lower():
+                if self.resume_dir != None:
+                    resume_path = self.resume_dir.resolve()
+                if self.resume_dir != None and resume_path.exists() and resume_path.is_file():
+                    element.send_keys(str(resume_path))
+                else:
+                    self._create_and_upload_resume(element)
+            elif 'cover' in parent.text.lower():
+                self._create_and_upload_cover_letter(element)
+
+    def _create_and_upload_resume(self, element):
+        max_retries = 3
+        retry_delay = 1
+        folder_path = 'generated_cv'
+
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+        for attempt in range(max_retries):
+            try:
+                # html_string = self.gpt_answerer.get_resume_html()
+                # with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as temp_html_file:
+                #     temp_html_file.write(html_string)
+                #     file_name_HTML = temp_html_file.name
+
+                # file_name_pdf = f"resume_{uuid.uuid4().hex}.pdf"
+                # file_path_pdf = os.path.join(folder_path, file_name_pdf)
+                
+                # with open(file_path_pdf, "wb") as f:
+                #     f.write(base64.b64decode(utils.HTML_to_PDF(file_name_HTML)))
+                    
+                # element.send_keys(os.path.abspath(file_path_pdf))
+                # time.sleep(2)  # Give some time for the upload process
+                # os.remove(file_name_HTML)
+                return True
+            except Exception:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                else:
+                    tb_str = traceback.format_exc()
+                    raise Exception(f"Max retries reached. Upload failed: \nTraceback:\n{tb_str}")
+
+    def _upload_resume(self, element: WebElement) -> None:
+        element.send_keys(str(self.resume_dir))
+
+    def _create_and_upload_cover_letter(self, element: WebElement) -> None:
+        cover_letter = self.gpt_answerer.answer_question_textual_wide_range("Write a cover letter")
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_pdf_file:
+            letter_path = temp_pdf_file.name
+            c = canvas.Canvas(letter_path, pagesize=letter)
+            width, height = letter
+            text_object = c.beginText(100, height - 100)
+            text_object.setFont("Helvetica", 12)
+            text_object.textLines(cover_letter)
+            c.drawText(text_object)
+            c.save()
+            element.send_keys(letter_path)
+
+    def _fill_additional_questions(self, element: WebElement) -> None:
+        # form_sections = self.driver.find_elements(By.CLASS_NAME, 'jobs-easy-apply-form-section__grouping')
+        # form_sections = self.driver.find_elements(By.CLASS_NAME, 'QSaviQdRZIrpgqmgiBqDtFERLTLuBmLHuY')
+        # for section in form_sections:
+        #     self._process_question(section)
+        self._process_question(element)
+
+    def _process_question(self, section: WebElement) -> None:
+        if self._handle_terms_of_service(section):
+            return
+        self._handle_radio_question(section)
+        self._handle_textbox_question(section)
+        self._handle_date_question(section)
+        self._handle_dropdown_question(section)
+
+    def _handle_terms_of_service(self, element: WebElement) -> bool:
+        try:
+            question = element.find_element(By.CLASS_NAME, 'jobs-easy-apply-form-element')
+            checkbox = question.find_element(By.TAG_NAME, 'label')
+            question_text = question.text.lower()
+            if 'terms of service' in question_text or 'privacy policy' in question_text or 'terms of use' in question_text:
+                checkbox.click()
+                return True
+        except NoSuchElementException:
+            pass
+        return False
+
+    def _handle_radio_question(self, element: WebElement) -> None:
+        try:
+            question = element.find_element(By.CLASS_NAME, 'fb-dash-form-element__label')
+            radios = element.find_elements(By.CSS_SELECTOR, 'input[type="radio"].fb-form-element__checkbox')
+            if not radios:
+                return
+
+            # Check if any radio button is already selected
+            for radio in radios:
+                # if radio.get_attribute('aria-checked') == 'true':
+                if radio.is_selected():
+                    print("Answer already selected. Skipping...")
+                    return  # Early exit if an answer is already selected
+
+            question_text = question.text.lower()
+            options = [radio.text.lower() for radio in radios]
+
+            answer = self._get_answer_from_set('radio', question_text, options)
+            if not answer:
+                answer = self.gpt_answerer.answer_question_from_options(question_text, options)
+                logger.info(f"Answer for question '{question_text}': {answer}\n{'radio'};{question_text};{answer}")
+                with open(csv_path, mode='a', newline='', encoding='utf-8') as file:
+                    writer = csv.writer(file, delimiter=';')
+                    writer.writerow(["radio", question_text, answer])
+                
+
+            self._select_radio(radios, answer)
+        except NoSuchElementException:
+            print("Radio button element not found.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    def _handle_textbox_question(self, element: WebElement) -> None:
+        try:
+            question_text = element.find_element(By.TAG_NAME, 'label').text.lower()
+            text_field = self._find_text_field(element)
+            # question = element.find_element(By.CLASS_NAME, 'jobs-easy-apply-form-element')
+            # question_text = question.find_element(By.TAG_NAME, 'label').text.lower()
+            # text_field = self._find_text_field(question)
+            if not text_field:
+                print("Textbox element not found(early). Skipping...")
+                return
+            # Check if the text field is already filled
+            if text_field.get_attribute('value').strip():
+                print("Textbox already filled. Skipping...")
+                return  # Early exit if the textbox is already filled
+
+            is_numeric = self._is_numeric_field(text_field)
+            answer = self._get_answer_from_set('numeric' if is_numeric else 'text', question_text)
+
+            if not answer:
+                answer = self.gpt_answerer.answer_question_numeric(question_text) if is_numeric else self.gpt_answerer.answer_question_textual_wide_range(question_text)
+                logger.info(f"Answer for question '{question_text}': {answer}\n{'numeric' if is_numeric else 'text'};{question_text};{answer}")
+                with open(csv_path, mode='a', newline='', encoding='utf-8') as file:
+                    writer = csv.writer(file, delimiter=';')
+                    writer.writerow(["numeric" if is_numeric else "text", question_text, answer])
+                
+            self._enter_text(text_field, answer)
+            self._handle_form_errors(element, question_text, answer, text_field)
+        except NoSuchElementException:
+            print("Textbox element not found.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+
+    def _handle_date_question(self, element: WebElement) -> None:
+        try:
+            date_picker = element.find_element(By.CLASS_NAME, 'artdeco-datepicker__input')
+            if not date_picker:
+                print("Date picker element not found(early).")
+                return
+            
+            # Check if the date picker is already filled
+            if date_picker.get_attribute('value').strip():
+                print("Date already selected. Skipping...")
+                return  # Early exit if the date is already filled
+
+            date_picker.clear()
+            date_picker.send_keys(date.today().strftime("%m/%d/%y"))
+            date_picker.send_keys(Keys.RETURN)
+        except NoSuchElementException:
+            print("Date picker element not found.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    def _handle_dropdown_question(self, element: WebElement) -> None:
+        try:
+            # question = element.find_element(By.CLASS_NAME, 'QSaviQdRZIrpgqmgiBqDtFERLTLuBmLHuY')
+            # question_text = question.find_element(By.TAG_NAME, 'label').text.lower()
+            question_text = element.find_element(By.TAG_NAME, 'label').text.lower()
+            dropdown = element.find_element(By.TAG_NAME, 'select')
+            select = Select(dropdown)
+            # sleep 1 sceond
+            time.sleep(.4)
+
+            if not dropdown:
+                print("Dropdown element not found(early). Skipping...")
+                return
+
+            # Check if an option is already selected
+            selected_option = select.first_selected_option.text.strip()
+            if selected_option and selected_option not in ['Select an option', 'Seleziona un’opzione']:
+                print(f"Dropdown already selected ({selected_option}). Skipping...")
+                return  # Early exit if a dropdown option is already selected
+
+            options = [option.text for option in select.options]
+            answer = self._get_answer_from_set('dropdown', question_text, options)
+
+            if not answer:
+                answer = self.gpt_answerer.answer_question_from_options(question_text, options)
+                logger.info(f"Answer for question '{question_text}': {answer}\n{'dropdown'};{question_text};{answer}")
+                with open(csv_path, mode='a', newline='', encoding='utf-8') as file:
+                    writer = csv.writer(file, delimiter=';')
+                    writer.writerow(["dropdown", question_text, answer])
+
+            self._select_dropdown(dropdown, answer)
+        except NoSuchElementException:
+            print("Dropdown element not found.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    def _get_answer_from_set(self, question_type: str, question_text: str, options: Optional[List[str]] = None) -> Optional[str]:
+        for entry in self.set_old_answers:
+            if isinstance(entry, tuple) and len(entry) == 3:
+                if entry[0] == question_type and question_text in entry[1].lower():
+                    answer = entry[2]
+                    return answer if options is None or answer in options else None
+        return None
+
+    def _find_text_field(self, question: WebElement) -> WebElement:
+        try:
+            return question.find_element(By.TAG_NAME, 'input')
+        except NoSuchElementException:
+            return question.find_element(By.TAG_NAME, 'textarea')
+
+    def _is_numeric_field(self, field: WebElement) -> bool:
+        field_type = field.get_attribute('type').lower()
+        if 'numeric' in field_type:
+            return True
+        class_attribute = field.get_attribute("id")
+        return class_attribute and 'numeric' in class_attribute
+
+    def _enter_text(self, element: WebElement, text: str) -> None:
+        element.clear()
+        element.send_keys(text)
+        time.sleep(0.5)  # Allow the dropdown to appear, if any
+
+        # Check for any dropdowns or autocomplete suggestions
+        try:
+            # Locate the first dropdown suggestion and click it
+            dropdown = WebDriverWait(self.driver, 2).until(
+                EC.visibility_of_element_located((By.CLASS_NAME, 'search-typeahead-v2__hit'))
+            )
+            dropdown.click()
+            time.sleep(0.5)  # Wait to ensure the selection is made
+        except (NoSuchElementException, TimeoutException):
+            pass  # If no dropdown, continue as normal
+
+
+    def _select_dropdown(self, element: WebElement, text: str) -> None:
+        select = Select(element)
+        select.select_by_visible_text(text)
+
+    def _select_radio(self, radios: List[WebElement], answer: str) -> None:
+        answer = answer.lower().strip()
+        for radio in radios:
+        #     if answer in radio.text.lower():
+        #         radio.find_element(By.TAG_NAME, 'label').click()
+        #         return
+        # radios[-1].find_element(By.TAG_NAME, 'label').click()
+            try:
+                label = radio.find_element(By.XPATH, './following-sibling::label')
+                if answer in label.text.lower().strip():
+                    label.click()  # Click the input directly for better reliability
+                    return
+            except Exception:
+                continue
+    
+        # Fallback: select last radio if no match found
+        try:
+            radios[-1].find_element(By.XPATH, './following-sibling::label').click()
+        except Exception as e:
+            raise ValueError(f"Failed to select any radio option: {str(e)}")
+
+    def _handle_form_errors(self, element: WebElement, question_text: str, answer: str, text_field: WebElement) -> None:
+        try:
+            error = element.find_element(By.CLASS_NAME, 'artdeco-inline-feedback--error')
+            error_text = error.text.lower()
+            new_answer = self.gpt_answerer.try_fix_answer(question_text, answer, error_text)
+            self._enter_text(text_field, new_answer)
+        except NoSuchElementException:
+            pass
+</file>
+
+<file path="src/core/original_files/linkedIn_job_manager.py">
+import csv
+import os
+import random
+from threading import Event
+import time
+import traceback
+from itertools import product
+from pathlib import Path
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from src.core.original_files import utils
+from src.core.original_files.job import Job
+from src.core.original_files.linkedIn_easy_applier import LinkedInEasyApplier
+
+
+class EnvironmentKeys:
+    def __init__(self):
+        self.skip_apply = self._read_env_key_bool("SKIP_APPLY")
+        self.disable_description_filter = self._read_env_key_bool("DISABLE_DESCRIPTION_FILTER")
+
+    @staticmethod
+    def _read_env_key(key: str) -> str:
+        return os.getenv(key, "")
+
+    @staticmethod
+    def _read_env_key_bool(key: str) -> bool:
+        return os.getenv(key) == "True"
+
+class LinkedInJobManager:
+    def __init__(self, driver, stop_event=None):
+        self.driver = driver
+        self.set_old_answers = set()
+        self.easy_applier_component = None
+        self.stop_event = stop_event or Event()  # Use provided event or create new
+        self._should_stop = False  # Additional flag for immediate stopping
+
+    def set_parameters(self, parameters):
+        self.company_blacklist = parameters.get('companyBlacklist', []) or []
+        self.title_blacklist = parameters.get('titleBlacklist', []) or []
+        self.positions = parameters.get('positions', [])
+        self.locations = parameters.get('locations', [])
+        self.base_search_url = self.get_base_search_url(parameters)
+        self.seen_jobs = []
+        resume_path = parameters.get('uploads', {}).get('resume', None)
+        if resume_path is not None and Path(resume_path).exists():
+            self.resume_dir = Path(resume_path)
+        else:
+            self.resume_dir = None
+        self.output_file_directory = Path(parameters['outputFileDirectory'])
+        self.env_config = EnvironmentKeys()
+        self.old_question()
+
+    def set_gpt_answerer(self, gpt_answerer):
+        self.gpt_answerer = gpt_answerer
+
+    def old_question(self):
+        """
+        Load old answers from a CSV file into a dictionary.
+        """
+        self.set_old_answers = {}
+        file_path = 'data_folder/output/old_Questions.csv'
+        if os.path.exists(file_path):
+            with open(file_path, 'r', newline='', encoding='utf-8', errors='ignore') as file:
+                csv_reader = csv.reader(file, delimiter=';', quotechar='"')
+                for row in csv_reader:
+                    if len(row) == 3:
+                        answer_type, question_text, answer = row
+                        self.set_old_answers[(answer_type.lower(), question_text.lower())] = answer
+
+    def stop(self):
+        """Immediately stop all job application activities"""
+        self._should_stop = True
+        if self.easy_applier_component:
+            self.easy_applier_component._discard_application()
+        if self.driver:
+            try:
+                self.driver.quit()
+            except:
+                pass
+
+    def start_applying(self):
+        self.easy_applier_component = LinkedInEasyApplier(
+            self.driver, self.resume_dir, self.set_old_answers, self.gpt_answerer
+        )
+        searches = list(product(self.positions, self.locations))
+        random.shuffle(searches)
+    
+        # Add stop check at the beginning
+        if self.stop_event.is_set():
+            return
+        
+        page_sleep = 0
+        minimum_time = 3 * 3
+        minimum_page_time = time.time() + minimum_time
+
+        for position, location in searches:
+            # Add stop check before each new search
+            if self.stop_event.is_set() or self._should_stop:
+                break
+
+            location_url = "&location=" + location
+            job_page_number = -1
+            utils.printyellow(f"Starting the search for {position} in {location}.")
+
+            try:
+                while True:
+                    # Add stop check at the start of each page
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
+
+                    page_sleep += 1
+                    job_page_number += 1
+                    utils.printyellow(f"Going to job page {job_page_number}")
+                
+                    # Add stop check before page navigation
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
+
+                    self.next_job_page(position, location_url, job_page_number)
+                    time.sleep(random.uniform(0.2, 1))
+                    utils.printyellow("Starting the application process for this page...")
+                    self.apply_jobs()
+                
+                    # Add stop check after applying
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
+
+                    utils.printyellow("Applying to jobs on this page has been completed!")
+
+                    time_left = minimum_page_time - time.time()
+                    if time_left > 0:
+                        # utils.printyellow(f"Sleeping for {time_left} seconds.")
+                        # time.sleep(time_left)
+                        minimum_page_time = time.time() + minimum_time
+                    if page_sleep % 5 == 0:
+                        # sleep_time = random.randint(5, 34)
+                        # utils.printyellow(f"Sleeping for {sleep_time / 60} minutes.")
+                        # time.sleep(sleep_time)
+                        page_sleep += 1
+            except Exception:
+                traceback.format_exc()
+                if self.stop_event.is_set() or self._should_stop:
+                    break
+                pass
+            time_left = minimum_page_time - time.time()
+            if time_left > 0:
+                # utils.printyellow(f"Sleeping for {time_left} seconds.")
+                # time.sleep(time_left)
+                minimum_page_time = time.time() + minimum_time
+            if page_sleep % 5 == 0:
+                # sleep_time = random.randint(50, 90)
+                # utils.printyellow(f"Sleeping for {sleep_time / 60} minutes.")
+                # time.sleep(sleep_time)
+                page_sleep += 1
+
+    def apply_jobs(self):
+        try:
+            # Add stop check
+            if self.stop_event.is_set() or self._should_stop:
+                return
+            try:
+                no_jobs_element = self.driver.find_element(By.CLASS_NAME, 'jobs-search-two-pane__no-results-banner--expand')
+                if 'No matching jobs found' in no_jobs_element.text or 'unfortunately, things aren' in self.driver.page_source.lower():
+                    raise Exception("No more jobs on this page")
+            except NoSuchElementException:
+                pass
+
+            job_results = self.driver.find_element(By.CLASS_NAME, "scaffold-layout__list").find_element(By.TAG_NAME, "ul")
+
+            job_list_elements = job_results.find_elements(By.TAG_NAME, "li")
+
+            if not job_list_elements:
+                raise Exception("No job class elements found on page")
+            
+            # job_list = [Job(*self.extract_job_information_from_tile(job_element)) for job_element in job_list_elements]
+            job_list = []
+            for job_element in job_list_elements:
+                try:
+                    job_title, company, job_location, link, apply_method = self.extract_job_information_from_tile(job_element)
+                    if not link:
+                        continue
+                    job = Job(job_title, company, job_location, link, apply_method)
+                    self.seen_jobs.append(link)
+                    job_list.append(job)
+                except Exception as e:
+                    utils.printred(f"Error extracting job information: {e}")
+                    traceback.print_exc()
+            
+            for job in job_list:
+                if self.stop_event.is_set() or self._should_stop:
+                    break
+                if self.is_blacklisted(job.title, job.company, job.link):
+                    utils.printyellow(f"Blacklisted {job.title} at {job.company}, skipping...")
+                    self.write_to_file(job.company, job.location, job.title, job.link, "skipped")
+                    continue
+
+                try:
+                    if job.apply_method not in {"Continue", "Applied", "Apply"}:
+                        self.easy_applier_component.job_apply(job)
+                except Exception as e:
+                    utils.printred(traceback.format_exc())
+                    self.write_to_file(job.company, job.location, job.title, job.link, "failed")
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
+                    continue  
+                self.write_to_file(job.company, job.location, job.title, job.link, "success")
+        
+        except Exception as e:
+            traceback.format_exc()
+            raise e
+    
+    def write_to_file(self, company, job_title, link, job_location, file_name):
+        to_write = [company, job_title, link, job_location]
+        file_path = self.output_file_directory / f"{file_name}.csv"
+        with open(file_path, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(to_write)
+
+    def record_gpt_answer(self, answer_type, question_text, gpt_response):
+        to_write = [answer_type, question_text, gpt_response]
+        file_path = self.output_file_directory / "registered_jobs.csv"
+        try:
+            with open(file_path, 'a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(to_write)
+        except Exception as e:
+            utils.printred(f"Error writing registered job: {e}")
+            utils.printred(f"Details: Answer type: {answer_type}, Question: {question_text}")
+
+    def get_base_search_url(self, parameters):
+        url_parts = []
+        if parameters['remote']:
+            url_parts.append("f_CF=f_WRA")
+        experience_levels = [str(i+1) for i, v in enumerate(parameters.get('experienceLevel', [])) if v]
+        if experience_levels:
+            url_parts.append(f"f_E={','.join(experience_levels)}")
+        url_parts.append(f"distance={parameters['distance']}")
+        job_types = [key[0].upper() for key, value in parameters.get('jobTypes', {}).items() if value]
+        if job_types:
+            url_parts.append(f"f_JT={','.join(job_types)}")
+        date_mapping = {
+            "all time": "",
+            "month": "&f_TPR=r2592000",
+            "week": "&f_TPR=r604800",
+            "24 hours": "&f_TPR=r86400"
+        }
+        date_param = next((v for k, v in date_mapping.items() if parameters.get('date', {}).get(k)), "")
+        url_parts.append("f_LF=f_AL")  # Easy Apply
+        base_url = "&".join(url_parts)
+        return f"?{base_url}{date_param}"
+    
+    def next_job_page(self, position, location, job_page):
+        self.driver.get(f"https://www.linkedin.com/jobs/search/{self.base_search_url}&keywords={position}{location}&start={job_page * 25}")
+    
+    def extract_job_information_from_tile(self, job_tile):
+        job_title, company, job_location, apply_method, link = "", "", "", "", ""
+        try:
+            job_title = job_tile.find_element(By.CSS_SELECTOR, 'a.job-card-list__title--link > span > strong').text
+            link = job_tile.find_element(By.CLASS_NAME, 'job-card-list__title--link').get_attribute('href').split('?')[0]
+            company = job_tile.find_element(By.CLASS_NAME, 'artdeco-entity-lockup__subtitle').text
+        except:
+            pass
+        try:
+            hiring_line = job_tile.find_element(By.XPATH, '//span[contains(.,\' is hiring for this\')]')
+            hiring_line_text = hiring_line.text
+            name_terminating_index = hiring_line_text.find(' is hiring for this')
+        except:
+            pass
+        try:
+            job_location = job_tile.find_element(By.CLASS_NAME, 'job-card-container__metadata-wrapper').text
+        except:
+            pass
+        try:
+            apply_method = job_tile.find_elements(By.CLASS_NAME, "job-card-container__footer-item")[-1].text
+        except:
+            apply_method = "Applied"
+
+        return job_title, company, job_location, link, apply_method
+    
+    def is_blacklisted(self, job_title, company, link):
+        job_title_words = job_title.lower().split(' ')
+        title_blacklisted = any(word in job_title_words for word in self.title_blacklist)
+        company_blacklisted = company.strip().lower() in (word.strip().lower() for word in self.company_blacklist)
+        # link_seen = link in self.seen_jobs
+        # return title_blacklisted or company_blacklisted or link_seen
+        return title_blacklisted or company_blacklisted
+</file>
+
+<file path="src/core/original_files/logger.py">
+from pathlib import Path
+from loguru import logger
+
+logs_path = Path(".logs")
+logs_path.mkdir(parents=True, exist_ok=True)
+
+logger.remove() # Remove the default console logger
+logger.add(
+    logs_path / "log_{time:YYYY-MM-DD}.log",  # File name with date
+    rotation="00:00",                  # Rotate daily at midnight
+    retention="2 months",                # Keep 7 days of logs
+    compression="zip",                 # Compress old logs
+    level="INFO",                      # Only log INFO and above
+    enqueue=True                       # Thread-safe logging
+)
+</file>
+
+<file path="src/core/original_files/main.py">
+import os
+import re
+from pathlib import Path
+from typing import Any
+import yaml
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+import click
+
+from src.core.original_files.utils import chromeBrowserOptions
+from src.core.original_files.gpt import GPTAnswerer
+from src.core.original_files.linkedIn_authenticator import LinkedInAuthenticator
+from src.core.original_files.linkedIn_bot_facade import LinkedInBotFacade
+from src.core.original_files.linkedIn_job_manager import LinkedInJobManager
+from src.core.original_files.resume import Resume
+
+from dotenv import load_dotenv
+load_dotenv()
+
+plain_text_resume_file_name = os.getenv('PLAIN_TEXT_RESUME_FILE_NAME', 'plain_text_resume.yaml')
+
+class ConfigError(Exception):
+    """Custom exception for configuration errors."""
+    pass
+
+class ConfigValidator:
+    @staticmethod
+    def validate_email(email: str) -> bool:
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(email_regex, email) is not None
+    
+    @staticmethod
+    def validate_config(config_yaml_path: Path) -> dict:
+        try:
+            with open(config_yaml_path, 'r') as stream:
+                parameters = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            raise ConfigError(f"Error reading config file {config_yaml_path}: {exc}")
+        except FileNotFoundError:
+            raise ConfigError(f"Config file not found: {config_yaml_path}")
+        
+
+        # Validate 'remote'
+        if 'remote' not in parameters or not isinstance(parameters['remote'], bool):
+            raise ConfigError(f"'remote' in config file {config_yaml_path} must be a boolean value.")
+
+        # Validate 'experienceLevel'
+        experience_level = parameters.get('experienceLevel', {})
+        valid_experience_levels = [
+            'internship', 'entry', 'associate', 'mid-senior level', 'director', 'executive'
+        ]
+        for level in valid_experience_levels:
+            if level not in experience_level or not isinstance(experience_level[level], bool):
+                raise ConfigError(f"Experience level '{level}' must be a boolean value in config file {config_yaml_path}.")
+
+        # Validate 'jobTypes'
+        job_types = parameters.get('jobTypes', {})
+        valid_job_types = [
+            'full-time', 'contract', 'part-time', 'temporary', 'internship', 'other', 'volunteer'
+        ]
+        for job_type in valid_job_types:
+            if job_type not in job_types or not isinstance(job_types[job_type], bool):
+                raise ConfigError(f"Job type '{job_type}' must be a boolean value in config file {config_yaml_path}.")
+
+        # Validate 'date'
+        date = parameters.get('date', {})
+        valid_dates = ['all time', 'month', 'week', '24 hours']
+        for date_filter in valid_dates:
+            if date_filter not in date or not isinstance(date[date_filter], bool):
+                raise ConfigError(f"Date filter '{date_filter}' must be a boolean value in config file {config_yaml_path}.")
+
+        # Validate 'positions'
+        positions = parameters.get('positions', [])
+        if not isinstance(positions, list) or not all(isinstance(pos, str) for pos in positions):
+            raise ConfigError(f"'positions' must be a list of strings in config file {config_yaml_path}.")
+        
+        # Validate 'locations'
+        locations = parameters.get('locations', [])
+        if not isinstance(locations, list) or not all(isinstance(loc, str) for loc in locations):
+            raise ConfigError(f"'locations' must be a list of strings in config file {config_yaml_path}.")
+
+        # Validate 'distance'
+        approved_distances = {0, 5, 10, 25, 50, 100}
+        distance = parameters.get('distance')
+        if distance not in approved_distances:
+            raise ConfigError(f"Invalid distance value in config file {config_yaml_path}. Must be one of: {approved_distances}")
+
+        # Validate 'companyBlacklist'
+        company_blacklist = parameters.get('companyBlacklist', [])
+        if not isinstance(company_blacklist, list) or not all(isinstance(comp, str) for comp in company_blacklist):
+            company_blacklist = []
+        parameters['companyBlacklist'] = company_blacklist
+
+        # Validate 'titleBlacklist'
+        title_blacklist = parameters.get('titleBlacklist', [])
+        if not isinstance(title_blacklist, list) or not all(isinstance(word, str) for word in title_blacklist):
+            title_blacklist = []
+        parameters['titleBlacklist'] = title_blacklist
+        return parameters
+
+    @staticmethod
+    def validate_secrets(secrets_yaml_path: Path) -> tuple:
+        try:
+            with open(secrets_yaml_path, 'r') as stream:
+                secrets = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            raise ConfigError(f"Error reading secrets file {secrets_yaml_path}: {exc}")
+        except FileNotFoundError:
+            raise ConfigError(f"Secrets file not found: {secrets_yaml_path}")
+
+        mandatory_secrets = ['email', 'password', 'openai_api_key']
+
+        for secret in mandatory_secrets:
+            if secret not in secrets:
+                raise ConfigError(f"Missing secret in file {secrets_yaml_path}: {secret}")
+           
+        if not ConfigValidator.validate_email(secrets['email']):
+            raise ConfigError(f"Invalid email format in secrets file {secrets_yaml_path}.")
+        if not secrets['password']:
+            raise ConfigError(f"Password cannot be empty in secrets file {secrets_yaml_path}.")
+        if not secrets['openai_api_key']:
+            raise ConfigError(f"OpenAI API key cannot be empty in secrets file {secrets_yaml_path}.")
+
+        return secrets['email'], str(secrets['password']), secrets['openai_api_key']
+
+class FileManager:
+    @staticmethod
+    def find_file(name_containing: str, with_extension: str, at_path: Path) -> Path:
+        for file in at_path.iterdir():
+            if name_containing.lower() in file.name.lower() and file.suffix.lower() == with_extension.lower():
+                return file
+        return None
+
+    @staticmethod
+    def validate_data_folder(app_data_folder: Path) -> tuple:
+        if not app_data_folder.exists() or not app_data_folder.is_dir():
+            raise FileNotFoundError(f"Data folder not found: {app_data_folder}")
+
+        secrets_file = app_data_folder / 'secrets.yaml'
+        config_file = app_data_folder / 'config.yaml'
+        plain_text_resume_file = app_data_folder / plain_text_resume_file_name
+        
+        missing_files = []
+        if not config_file.exists():
+            missing_files.append('config.yaml')
+        if not plain_text_resume_file.exists():
+            missing_files.append(plain_text_resume_file_name)
+        
+        if missing_files:
+            raise FileNotFoundError(f"Missing files in the data folder: {', '.join(missing_files)}")
+        
+        output_folder = app_data_folder / 'output'
+        output_folder.mkdir(exist_ok=True)
+        return secrets_file, config_file, plain_text_resume_file, output_folder
+
+    @staticmethod
+    def file_paths_to_dict(resume_file: Path | None, plain_text_resume_file: Path) -> dict:
+        if not plain_text_resume_file.exists():
+            raise FileNotFoundError(f"Plain text resume file not found: {plain_text_resume_file}")
+        
+        result = {'plainTextResume': plain_text_resume_file}
+        
+        if resume_file is not None:
+            if not resume_file.exists():
+                raise FileNotFoundError(f"Resume file not found: {resume_file}")
+            result['resume'] = resume_file
+        
+        return result
+
+def init_browser():
+    try:
+        options = chromeBrowserOptions()
+        # service = ChromeService(ChromeDriverManager().install())
+        # return webdriver.Chrome(service=service, options=options)
+        return webdriver.Remote(
+            command_executor=os.getenv('SELENIUM_REMOTE_URL', 'http://localhost:4444'),
+            options=options
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to initialize browser: {str(e)}")
+
+def create_bot(driver: Any, email: str, password: str, parameters: dict, openai_api_key: str):
+    try:
+        # browser = init_browser()
+        login_component = LinkedInAuthenticator(driver)
+        apply_component = LinkedInJobManager(driver)
+        gpt_answerer_component = GPTAnswerer(openai_api_key)
+        with open(parameters['uploads']['plainTextResume'], "r") as file:
+            plain_text_resume_file = file.read()
+        resume_object = Resume(plain_text_resume_file)
+        bot = LinkedInBotFacade(login_component, apply_component)
+        bot.set_secrets(email, password)
+        bot.set_resume(resume_object)
+        bot.set_gpt_answerer(gpt_answerer_component)
+        bot.set_parameters(parameters)
+        bot.start_login()
+        bot.start_apply()
+    except Exception as e:
+        raise RuntimeError(f"Error running the bot: {str(e)}")
+    
+def run_bot(bot: LinkedInBotFacade):
+    try:
+        bot.start_login()
+        bot.start_apply()
+    except Exception as e:
+        raise RuntimeError(f"Error running the bot: {str(e)}")
+
+@click.command()
+@click.option('--resume', type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path), help="Path to the resume PDF file")
+def main(resume: Path = None):
+    try:
+        # data_folder = Path("data_folder")
+        data_folder = Path(os.getenv('DATA_FOLDER', 'data_folder'))
+        secrets_file, config_file, plain_text_resume_file, output_folder = FileManager.validate_data_folder(data_folder)
+        parameters = ConfigValidator.validate_config(config_file)
+        email, password, openai_api_key = ConfigValidator.validate_secrets(secrets_file)
+        parameters['uploads'] = FileManager.file_paths_to_dict(resume, plain_text_resume_file)
+        parameters['outputFileDirectory'] = output_folder
+
+        bot = create_bot(email, password, parameters, openai_api_key)
+        run_bot(bot)
+    except ConfigError as ce:
+        print(f"Configuration error: {str(ce)}")
+        print("Refer to the configuration guide for troubleshooting: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+    except FileNotFoundError as fnf:
+        print(f"File not found: {str(fnf)}")
+        print("Ensure all required files are present in the data folder.")
+        print("Refer to the file setup guide: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+    except RuntimeError as re:
+        print(f"Runtime error: {str(re)}")
+        print("Check browser setup and other runtime issues.")
+        print("Refer to the configuration and troubleshooting guide: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+        print("Refer to the general troubleshooting guide: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="src/core/original_files/resume.py">
+from dataclasses import dataclass
+from typing import Dict
+import yaml
+
+@dataclass
+class PersonalInformation:
+    name: str
+    surname: str
+    dateOfBirth: str
+    country: str
+    city: str
+    address: str
+    phone: str
+    phonePrefix: str
+    email: str
+    github: str
+    linkedin: str
+
+@dataclass
+class SelfIdentification:
+    gender: str
+    pronouns: str
+    veteran: str
+    disability: str
+    ethnicity: str
+
+@dataclass
+class LegalAuthorization:
+    euWorkAuthorization: str
+    usWorkAuthorization: str
+    requiresUsVisa: str
+    legallyAllowedToWorkInUs: str
+    requiresUsSponsorship: str
+    requiresEuVisa: str
+    legallyAllowedToWorkInEu: str
+    requiresEuSponsorship: str
+
+@dataclass
+class WorkPreferences:
+    remoteWork: str
+    inPersonWork: str
+    openToRelocation: str
+    willingToCompleteAssessments: str
+    willingToUndergoDrugTests: str
+    willingToUndergoBackgroundChecks: str
+
+@dataclass
+class Education:
+    degree: str
+    university: str
+    gpa: str
+    graduationYear: str
+    fieldOfStudy: str
+    skillsAcquired: Dict[str, str]
+
+@dataclass
+class Experience:
+    position: str
+    company: str
+    employmentPeriod: str
+    location: str
+    industry: str
+    keyResponsibilities: Dict[str, str]
+    skillsAcquired: Dict[str, str]
+
+@dataclass
+class Availability:
+    noticePeriod: str
+
+@dataclass
+class SalaryExpectations:
+    salaryRangeUSD: str
+    salaryRangeEUR: str
+    annualSalary: str
+
+@dataclass
+class Language:
+    language: str
+    proficiency: str
+
+class Resume:
+    def __init__(self, yaml_str: str):
+        data = yaml.safe_load(yaml_str)
+        self.personal_information = PersonalInformation(**data['personal_information'])
+        self.self_identification = SelfIdentification(**data['self_identification'])
+        self.legal_authorization = LegalAuthorization(**data['legal_authorization'])
+        self.work_preferences = WorkPreferences(**data['work_preferences'])
+        self.education_details = [Education(**edu) for edu in data['education_details']]
+        self.experience_details = [Experience(**exp) for exp in data['experience_details']]
+        self.projects = data['projects']
+        self.availability = Availability(**data['availability'])
+        self.salary_expectations = SalaryExpectations(**data['salary_expectations'])
+        self.certifications = data['certifications']
+        self.languages = [Language(**lang) for lang in data['languages']]
+        self.interests = data['interests']
+
+    def __str__(self):
+        def format_dict(dict_obj):
+            return "\n".join(f"{key}: {value}" for key, value in dict_obj.items())
+
+        def format_dataclass(obj):
+            return "\n".join(f"{field.name}: {getattr(obj, field.name)}" for field in obj.__dataclass_fields__.values())
+
+        return ("Personal Information:\n" + format_dataclass(self.personal_information) + "\n\n"
+                "Self Identification:\n" + format_dataclass(self.self_identification) + "\n\n"
+                "Legal Authorization:\n" + format_dataclass(self.legal_authorization) + "\n\n"
+                "Work Preferences:\n" + format_dataclass(self.work_preferences) + "\n\n"
+                "Education Details:\n" + "\n".join(
+                    f"  - {edu.degree} in {edu.fieldOfStudy} from {edu.university}, "
+                    f"GPA: {edu.gpa}, Graduation Year: {edu.graduationYear}\n"
+                    f"    Skills Acquired:\n{format_dict(edu.skillsAcquired)}"
+                    for edu in self.education_details
+                ) + "\n\n"
+                "Experience Details:\n" + "\n".join(
+                    f"  - {exp.position} at {exp.company} ({exp.employmentPeriod}), {exp.location}, {exp.industry}\n"
+                    f"    Key Responsibilities:\n{format_dict(exp.keyResponsibilities)}\n"
+                    f"    Skills Acquired:\n{format_dict(exp.skillsAcquired)}"
+                    for exp in self.experience_details
+                ) + "\n\n"
+                "Projects:\n" + "\n".join(f"  - {proj}" for proj in self.projects.values()) + "\n\n"
+                f"Availability: {self.availability.noticePeriod}\n\n"
+                f"Salary Expectations: {self.salary_expectations.salaryRangeUSD}\n\n"
+                "Certifications: " + ", ".join(self.certifications) + "\n\n"
+                "Languages:\n" + "\n".join(
+                    f"  - {lang.language} ({lang.proficiency})"
+                    for lang in self.languages
+                ) + "\n\n"
+                "Interests:\n" + ", ".join(self.interests)
+            )
+</file>
+
+<file path="src/core/original_files/strings.py">
+resume_markdown_template = """
+Act as an HR expert and resume writer specializing in ATS-friendly resumes. Your task is twofold:
+
+1. **Review and Extract Information**: Carefully examine the candidate's current resume to extract the following critical details:
+   - Work experience
+   - Educational background
+   - Relevant skills
+   - Achievements
+   - Certifications
+
+2. **Optimize the Resume**: Using the provided template, create a highly optimized resume for the relevant industry. The resume should:
+   - Include commonly required skills and keywords for the industry
+   - Utilize ATS-friendly phrases and terminology to ensure compatibility with automated systems
+   - Highlight strengths and achievements relevant to the industry
+   - Present experience, skills, and accomplishments in a compelling and professional manner
+   - Maintain a clear, that is easily readable by both ATS and human reviewers
+
+Provide guidance on how to enhance the presentation of the information to maximize impact and readability. Offer advice on tailoring the content to general industry standards, ensuring the resume passes ATS filters and captures the attention of recruiters, thereby increasing the candidate’s chances of securing an interview.
+
+## Information to Collect and Analyze
+- **My information eesume:**  
+  {resume}
+
+## Template to Use
+```
+# [Full Name]
+
+[Your City, Your Country](Maps link)
+[Your Prefix Phone number](tel: Your Prefix Phone number)
+[Your Email](mailto:Your Email)
+[LinkedIn](Link LinkedIn account)
+[GitHub](Link GitHub account)
+
+## Summary
+
+[Brief professional summary highlighting your experience, key skills, and career objectives. 2-3 sentences.]
+
+## Skills
+
+- **Skill1:** [details (max 15 word)]
+- **Skill2:** [details (max 15 word)]
+- **Skill3:** [details (max 15 word)]
+- **Skill4:** [details (max 15 word)]
+- **Skill4:** [details (max 15 word)]
+- **Skill5:** [details (max 15 word)]
+
+## Working Experience
+
+### [Job Title]
+**[Company Name]** – [City, State]
+*[Start Date – End Date]*
+
+1. [Achievement or responsibility]
+2. [Achievement or responsibility]
+3. [Achievement or responsibility]
+4. [Achievement or responsibility]
+5. [Achievement or responsibility]
+
+### [Job Title]
+**[Company Name]** – [City, State]
+*[Start Date – End Date]*
+
+1. [Achievement or responsibility]
+2. [Achievement or responsibility]
+3. [Achievement or responsibility]
+4. [Achievement or responsibility]
+5. [Achievement or responsibility]
+
+### [Job Title]
+**[Company Name]** – [City, State]
+*[Start Date – End Date]*
+
+1. [Achievement or responsibility]
+2. [Achievement or responsibility]
+3. [Achievement or responsibility]
+4. [Achievement or responsibility]
+5. [Achievement or responsibility]
+
+## Education
+
+**[Degree] in [Field of Study]**
+[University Name] – [City, State]
+*Graduated: [Month Year]*
+
+## Certifications
+
+1. [Certification Name]
+2. [Certification Name]
+3. [Certification Name]
+
+## Projects
+
+### [Project Name]
+1. [Brief description of the project and your role]
+
+### [Project Name]
+1. [Brief description of the project and your role]
+
+### [Project Name]
+1. [Brief description of the project and your role]
+
+## Languages
+
+1. **[Language]:** [Proficiency Level]
+2. **[Language]:** [Proficiency Level]
+```
+The results should be provided in **markdown** format, Provide only the markdown code for the resume, without any explanations or additional text and also without ```markdown ```
+"""
+
+fusion_job_description_resume_template = """
+
+Act as an HR expert and resume writer with a strategic approach. Customize the resume to highlight the candidate’s
+strengths, skills, and achievements that are most relevant to the provided job description. 
+Use a smart and targeted approach, incorporating key skills and abilities as well as important aspects of the job 
+description into the resume. 
+Ensure that the resume grabs the attention of hiring managers within the first few seconds and uses specific keywords and phrases from the job description to pass through Applicant Tracking Systems (ATS).
+
+Important Note: While making the necessary adjustments to align the resume with the job description, ensure that the overall structure of the resume remains intact. Do not drastically alter the organization of the document, but optimize it to highlight the most relevant points for the desired position.
+
+- **Most important infomation on job descrption:**  
+  {job_description}
+
+- **My information resume:**  
+  {formatted_resume}
+
+The results should be provided in **markdown** format, Provide only the markdown code for the resume, without any explanations or additional text and also without ```markdown ```
+  """
+
+
+
+html_template = """
+<!DOCTYPE html>
+<title>Resume</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="{casual_markdown}"></script>
+<script src="{reorganize_header}"></script>
+<link rel="stylesheet" href="{resume_css}">
+<body onload="document.body.innerHTML=md.html(document.body.innerHTML); document.body.style.display='block';">
+"""
+
+
+# Personal Information Template
+personal_information_template = """
+Answer the following question based on the provided personal information.
+
+## Rules
+- Answer questions directly.
+- Use the same language as the question.
+
+## Example
+My resume: John Doe, born on 01/01/1990, living in Milan, Italy.
+Question: What is your city?
+ Milan
+
+Personal Information: {resume_section}
+Question: {question}
+"""
+
+
+
+# Personal Information Template
+personal_information_template = """
+Answer the following question based on the provided personal information.
+
+## Rules
+- Answer questions directly.
+- Use the same language as the question.
+
+## Example
+My resume: John Doe, born on 01/01/1990, living in Milan, Italy.
+Question: What is your city?
+ Milan
+
+Personal Information: {resume_section}
+Question: {question}
+"""
+
+# Self Identification Template
+self_identification_template = """
+Answer the following question based on the provided self-identification details.
+
+## Rules
+- Answer questions directly.
+- Use the same language as the question.
+
+## Example
+My resume: Male, uses he/him pronouns, not a veteran, no disability.
+Question: What are your gender?
+Male
+
+Self-Identification: {resume_section}
+Question: {question}
+"""
+
+# Legal Authorization Template
+legal_authorization_template = """
+Answer the following question based on the provided legal authorization details.
+
+## Rules
+- Answer questions directly.
+- Use the same language as the question.
+
+## Example
+My resume: Authorized to work in the EU, no US visa required.
+Question: Are you legally allowed to work in the EU?
+Yes
+
+Legal Authorization: {resume_section}
+Question: {question}
+"""
+
+# Work Preferences Template
+work_preferences_template = """
+Answer the following question based on the provided work preferences.
+
+## Rules
+- Answer questions directly.
+- Use the same language as the question.
+
+## Example
+My resume: Open to remote work, willing to relocate.
+Question: Are you open to remote work?
+Yes
+
+Work Preferences: {resume_section}
+Question: {question}
+"""
+
+# Education Details Template
+education_details_template = """
+Answer the following question based on the provided education details.
+
+## Rules
+- Answer questions directly.
+- If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
+- If unsure, respond with "I have no experience with that, but I learn fast" or "Not yet, but willing to learn."
+- Keep the answer under 140 characters.
+- Use the same language as the question.
+
+## Example
+My resume: Bachelor's degree in Computer Science with experience in Python.
+Question: Do you have experience with Python?
+Yes, I have experience with Python.
+
+Education Details: {resume_section}
+Question: {question}
+"""
+
+# Experience Details Template
+experience_details_template = """
+Answer the following question based on the provided experience details.
+
+## Rules
+- Answer questions directly.
+- If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
+- If unsure, respond with "I have no experience with that, but I learn fast" or "Not yet, but willing to learn."
+- Keep the answer under 140 characters.
+- Use the same language as the question.
+
+## Example
+My resume: 3 years as a software developer with leadership experience.
+Question: Do you have leadership experience?
+Yes, I have 3 years of leadership experience.
+
+Experience Details: {resume_section}
+Question: {question}
+"""
+
+# Projects Template
+projects_template = """
+Answer the following question based on the provided project details.
+
+## Rules
+- Answer questions directly.
+- If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
+- Keep the answer under 140 characters.
+- Use the same language as the question.
+
+## Example
+My resume: Led the development of a mobile app, repository available.
+Question: Have you led any projects?
+Yes, led the development of a mobile app
+
+Projects: {resume_section}
+Question: {question}
+"""
+
+# Availability Template
+availability_template = """
+Answer the following question based on the provided availability details.
+
+## Rules
+- Answer questions directly.
+- Keep the answer under 140 characters.
+- Use periods only if the answer has multiple sentences.
+- Use the same language as the question.
+
+## Example
+My resume: Available to start immediately.
+Question: When can you start?
+I can start immediately.
+
+Availability: {resume_section}
+Question: {question}
+"""
+
+# Salary Expectations Template
+salary_expectations_template = """
+Answer the following question based on the provided salary expectations.
+
+## Rules
+- Answer questions directly.
+- Keep the answer under 140 characters.
+- Use periods only if the answer has multiple sentences.
+- Use the same language as the question.
+
+## Example
+My resume: Looking for a salary in the range of 50k-60k USD.
+Question: What are your salary expectations?
+55000.
+
+Salary Expectations: {resume_section}
+Question: {question}
+"""
+
+# Certifications Template
+certifications_template = """
+Answer the following question based on the provided certifications.
+
+## Rules
+- Answer questions directly.
+- If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
+- If unsure, respond with "I have no experience with that, but I learn fast" or "Not yet, but willing to learn."
+- Keep the answer under 140 characters.
+
+## Example
+My resume: Certified in Project Management Professional (PMP).
+Question: Do you have PMP certification?
+Yes, I am PMP certified.
+
+Certifications: {resume_section}
+Question: {question}
+"""
+
+# Languages Template
+languages_template = """
+Answer the following question based on the provided language skills.
+
+## Rules
+- Answer questions directly.
+- If it seems likely that you have the experience, even if not explicitly defined, answer as if you have the experience.
+- If unsure, respond with "I have no experience with that, but I learn fast" or "Not yet, but willing to learn."
+- Keep the answer under 140 characters.
+- Use the same language as the question.
+
+## Example
+My resume: Fluent in Italian and English.
+Question: What languages do you speak?
+Fluent in Italian and English.
+
+Languages: {resume_section}
+Question: {question}
+"""
+
+# Interests Template
+interests_template = """
+Answer the following question based on the provided interests.
+
+## Rules
+- Answer questions directly.
+- Keep the answer under 140 characters.
+- Use periods only if the answer has multiple sentences.
+- Use the same language as the question.
+
+## Example
+My resume: Interested in AI and data science.
+Question: What are your interests?
+AI and data science.
+
+Interests: {resume_section}
+Question: {question}
+"""
+
+summarize_prompt_template = """
+As a seasoned HR expert, your task is to identify and outline the key skills and requirements necessary for the position of this job. Use the provided job description as input to extract all relevant information. This will involve conducting a thorough analysis of the job's responsibilities and the industry standards. You should consider both the technical and soft skills needed to excel in this role. Additionally, specify any educational qualifications, certifications, or experiences that are essential. Your analysis should also reflect on the evolving nature of this role, considering future trends and how they might affect the required competencies.
+
+Rules:
+Remove boilerplate text
+Include only relevant information to match the job description against the resume
+
+# Analysis Requirements
+Your analysis should include the following sections:
+Technical Skills: List all the specific technical skills required for the role based on the responsibilities described in the job description.
+Soft Skills: Identify the necessary soft skills, such as communication abilities, problem-solving, time management, etc.
+Educational Qualifications and Certifications: Specify the essential educational qualifications and certifications for the role.
+Professional Experience: Describe the relevant work experiences that are required or preferred.
+Role Evolution: Analyze how the role might evolve in the future, considering industry trends and how these might influence the required skills.
+
+# Final Result:
+Your analysis should be structured in a clear and organized document with distinct sections for each of the points listed above. Each section should contain:
+This comprehensive overview will serve as a guideline for the recruitment process, ensuring the identification of the most qualified candidates.
+
+# Job Description:
+```
+{text}
+```
+
+---
+
+# Job Description Summary"""
+
+
+coverletter_template = """
+Compose a brief and impactful cover letter based on the provided job description and resume. The letter should be no longer than three paragraphs and should be written in a professional, yet conversational tone. Avoid using any placeholders, and ensure that the letter flows naturally and is tailored to the job.
+
+Analyze the job description to identify key qualifications and requirements. Introduce the candidate succinctly, aligning their career objectives with the role. Highlight relevant skills and experiences from the resume that directly match the job’s demands, using specific examples to illustrate these qualifications. Reference notable aspects of the company, such as its mission or values, that resonate with the candidate’s professional goals. Conclude with a strong statement of why the candidate is a good fit for the position, expressing a desire to discuss further.
+
+Please write the cover letter in a way that directly addresses the job role and the company’s characteristics, ensuring it remains concise and engaging without unnecessary embellishments. The letter should be formatted into paragraphs and should not include a greeting or signature.
+
+## Rules:
+- Provide only the text of the cover letter.
+- Do not include any introductions, explanations, or additional information.
+- The letter should be formatted into paragraph.
+- Use the same language as the job description.
+
+## Job Description:
+```
+{job_description}
+```
+## My resume:
+```
+{resume}
+```
+"""
+
+
+resume_stuff_template = """
+The following is a resume, personal data, and an answered question using this information, being answered by the person who's resume it is (first person).
+
+## Rules
+- Answer questions directly
+- If seems likely that you have the experience, even if is not explicitly defined, answer as if you have the experience
+- If you cannot answer the question, answer things like "I have no experience with that, but I learn fast, very fast", "not yet, but I will learn"...
+- The answer must not be longer than a tweet (140 characters)
+- Only add periods if the answer has multiple sentences/paragraphs
+- Use the same language as the question.
+
+## Example 1
+My resume: I'm a software engineer with 10 years of experience in  swift .
+Question: What is your experience with swift?
+10 years
+
+-----
+
+## My resume:
+```
+{resume}
+```
+        
+## Question:
+{question}
+
+## """
+
+
+numeric_question_template = """The following is a resume and an answered question about the resume, being answered by the person who's resume it is (first person).
+
+## Rules
+- Answer the question directly (only number).
+- Regarding work experience just check the Experience Details -> Skills Acquired section.
+- Regarding experience in general just check the section Experience Details -> Skills Acquired and also Education Details -> Skills Acquired.
+- If it seems likely that you have the experience based on the resume, even if not explicitly stated on the resume, answer as if you have the experience.
+- For questions regarding common tools like sharepoint, office etc, just answer 4.
+- If it's something that has is common in the field of the resume, use the years i've been working in that field (example: asking years of Flask experience, if you have 5 years of working in the general field, answer 5).
+- If it's about RAL (current annual retribution), just answer {RAL}.
+- Finally, if you cannot answer the question, answer 1, but try to avoid it as much as possible.
+
+## Example
+My resume: I'm a software engineer with 10 years of experience on both swift and python.
+Question: how much years experience with swift?
+10
+
+-----
+
+## My resume:
+```
+{resume}
+```
+        
+## Question:
+{question}
+
+## """
+
+options_template = """The following is a resume and an answered question about the resume, the answer is one of the options.
+
+## Rules
+- Never choose the default/placeholder option, examples are: 'Select an option', 'None', 'Choose from the options below', etc.
+- The answer must be one of the options.
+- The answer must exclusively contain one of the options.
+
+## Example
+My resume: I'm a software engineer with 10 years of experience on swift, python, C, C++.
+Question: How many years of experience do you have on python?
+Options: [1-2, 3-5, 6-10, 10+]
+10+
+
+-----
+
+## My resume:
+```
+{resume}
+```
+
+## Question:
+{question}
+
+## Options:
+{options}
+
+## """
+
+
+try_to_fix_template = """\
+The objective is to fix the text of a form input on a web page.
+
+## Rules
+- Use the error to fix the original text.
+- The error "Please enter a valid answer" usually means the text is too large, shorten the reply to less than a tweet.
+- For errors like "Enter a whole number between 3 and 30", just need a number.
+
+-----
+
+## Form Question
+{question}
+
+## Input
+{input} 
+
+## Error
+{error}  
+
+## Fixed Input
+"""
+
+func_summarize_prompt_template = """
+        Following are two texts, one with placeholders and one without, the second text uses information from the first text to fill the placeholders.
+        
+        ## Rules
+        - A placeholder is a string like "[[placeholder]]". E.g. "[[company]]", "[[job_title]]", "[[years_of_experience]]"...
+        - The task is to remove the placeholders from the text.
+        - If there is no information to fill a placeholder, remove the placeholder, and adapt the text accordingly.
+        - No placeholders should remain in the text.
+        
+        ## Example
+        Text with placeholders: "I'm a software engineer engineer with 10 years of experience on [placeholder] and [placeholder]."
+        Text without placeholders: "I'm a software engineer with 10 years of experience."
+        
+        -----
+        
+        ## Text with placeholders:
+        {text_with_placeholders}
+        
+        ## Text without placeholders:"""
+</file>
+
+<file path="src/core/original_files/utils.py">
+import json
+import os
+import random
+import time
+from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium import webdriver
+import time
+import glob
+from webdriver_manager.chrome import ChromeDriverManager
+
+headless = False
+chromeProfilePath = os.path.join(os.getcwd(), "chrome_profile", "linkedin_profile")
+
+def ensure_chrome_profile():
+    profile_dir = os.path.dirname(chromeProfilePath)
+    if not os.path.exists(profile_dir):
+        os.makedirs(profile_dir)
+    if not os.path.exists(chromeProfilePath):
+        os.makedirs(chromeProfilePath)
+    return chromeProfilePath
+
+def is_scrollable(element):
+    scroll_height = element.get_attribute("scrollHeight")
+    client_height = element.get_attribute("clientHeight")
+    return int(scroll_height) > int(client_height)
+
+
+def scroll_slow(driver, scrollable_element, start=0, end=3600, step=100, reverse=False):
+    if reverse:
+        start, end = end, start
+        step = -step
+    if step == 0:
+        raise ValueError("Step cannot be zero.")
+    script_scroll_to = "arguments[0].scrollTop = arguments[1];"
+    try:
+        if scrollable_element.is_displayed():
+            if not is_scrollable(scrollable_element):
+                print("The element is not scrollable.")
+                return
+            if (step > 0 and start >= end) or (step < 0 and start <= end):
+                print("No scrolling will occur due to incorrect start/end values.")
+                return        
+            for position in range(start, end, step):
+                try:
+                    driver.execute_script(script_scroll_to, scrollable_element, position)
+                except Exception as e:
+                    print(f"Error during scrolling: {e}")
+                # time.sleep(random.uniform(1.0, 2.6))
+            driver.execute_script(script_scroll_to, scrollable_element, end)
+            time.sleep(0.1)
+        else:
+            print("The element is not visible.")
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+
+
+def HTML_to_PDF(FilePath):
+    # Validate and prepare file paths
+    if not os.path.isfile(FilePath):
+        raise FileNotFoundError(f"The specified file does not exist: {FilePath}")
+    FilePath = f"file:///{os.path.abspath(FilePath).replace(os.sep, '/')}"
+    # Set up Chrome options
+    chrome_options = webdriver.ChromeOptions()
+    # Initialize Chrome driver
+    service = ChromeService(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    
+    try:
+        # Load the HTML file
+        driver.get(FilePath)
+        time.sleep(3)
+        start_time = time.time()
+        pdf_base64 = driver.execute_cdp_cmd("Page.printToPDF", {
+            "printBackground": True,    
+            "landscape": False,         
+            "paperWidth": 10,           
+            "paperHeight": 11,           
+            "marginTop": 0,            
+            "marginBottom": 0,
+            "marginLeft": 0,
+            "marginRight": 0,
+            "displayHeaderFooter": False,
+            "preferCSSPageSize": True,   
+            "generateDocumentOutline": False, 
+            "generateTaggedPDF": False,
+            "transferMode": "ReturnAsBase64"
+        })
+        
+        if time.time() - start_time > 120:
+            raise TimeoutError("PDF generation exceeded the specified timeout limit.")
+        return pdf_base64['data']
+
+    except WebDriverException as e:
+        raise RuntimeError(f"WebDriver exception occurred: {e}")
+    
+    finally:
+        # Ensure the driver is closed
+        driver.quit()
+
+def chromeBrowserOptions():
+    options = webdriver.ChromeOptions()
+    options.add_argument('--no-sandbox')
+    options.add_argument("--ignore-certificate-errors")
+    options.add_argument("--disable-extensions")
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--remote-debugging-port=9222')
+    if headless:
+        options.add_argument("--headless")
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-blink-features")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    
+    # Assicurati che la directory del profilo Chrome esista
+    # ensure_chrome_profile()
+
+    # if len(chromeProfilePath) > 0:
+    #     initialPath = os.path.dirname(chromeProfilePath)
+    #     profileDir = os.path.basename(chromeProfilePath)
+    #     options.add_argument('--user-data-dir=' + initialPath)
+    #     options.add_argument("--profile-directory=" + profileDir)
+    # else:
+    #     options.add_argument("--incognito")
+        
+    options.add_argument("--incognito")
+        
+    return options
+
+
+def printred(text):
+    # Codice colore ANSI per il rosso
+    RED = "\033[91m"
+    RESET = "\033[0m"
+    # Stampa il testo in rosso
+    print(f"{RED}{text}{RESET}")
+
+def printyellow(text):
+    # Codice colore ANSI per il giallo
+    YELLOW = "\033[93m"
+    RESET = "\033[0m"
+    # Stampa il testo in giallo
+    print(f"{YELLOW}{text}{RESET}")
+</file>
+
+<file path="src/core/bot_runner.py">
+import os
+from threading import Thread, Event
+from pathlib import Path
+import time
+from typing import Optional
+import yaml
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from src.core.original_files.main import FileManager, create_bot, run_bot
+from src.core.original_files.utils import chromeBrowserOptions  # Import your existing function
+
+class BotRunner:
+    def __init__(self):
+        self.stop_event = Event()
+        self.thread = None
+        self.driver = None
+        self.start_time = None
+        self.jobs_applied_count = 0 # WIP
+        self.current_position = None # WIP
+        self.current_company = None # WIP
+        
+    def run(self, config_path: Path, secrets_path: Path, resume_path: Optional[Path] = None):
+        """Run the bot in a separate thread"""
+        self.start_time = time.time()
+        if self.thread and self.thread.is_alive():
+            return {'status': 'error', 'message': 'Bot is already running'}
+            
+        self.stop_event.clear()
+        
+        # Load configuration
+        with open(config_path, 'r') as f:
+            parameters = yaml.safe_load(f)
+        with open(secrets_path, 'r') as f:
+            secrets = yaml.safe_load(f)
+        
+
+        parameters['uploads'] = FileManager.file_paths_to_dict(None, resume_path)
+        parameters['outputFileDirectory'] = str(Path(os.getenv('DATA_FOLDER')) / "output")
+
+        # Prepare args for original function
+        args = {
+            'email': secrets['email'],
+            'password': secrets['password'],
+            'parameters': parameters,
+            'openai_api_key': secrets['openai_api_key']
+        }
+        
+        def bot_wrapper():
+            try:
+                # Initialize browser with options that allow for remote control
+                options = chromeBrowserOptions()
+                service = ChromeService(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=options)
+                # self.driver = webdriver.Remote(
+                #     command_executor=os.getenv('SELENIUM_REMOTE_URL', 'http://localhost:4444'),
+                #     options=options
+                # )
+                
+                # Run the original bot logic
+                bot = create_bot(driver=self.driver, **args)
+                run_bot(bot)
+                
+            except Exception as e:
+                print(f"Bot error: {str(e)}")
+            finally:
+                if self.driver:
+                    self.driver.quit()
+                    self.driver = None
+        
+        self.thread = Thread(target=bot_wrapper)
+        self.thread.start()
+        return {'status': 'success', 'message': 'Bot started'}
+        
+    def stop(self):
+        """Returns dict with stop details including force flag"""
+        was_running = self.thread and self.thread.is_alive()
+        needed_force = False
+        
+        if was_running:
+            self.stop_event.set()
+            try:
+                # Try graceful shutdown first
+                self.thread.join(timeout=5)
+                if self.thread.is_alive():
+                    needed_force = True
+                    if self.driver:
+                        self.driver.quit()  # Force quit if not responding
+            except Exception:
+                needed_force = True
+                
+        return {
+            'status': 'success' if was_running else 'error',
+            'message': 'Force stopped' if needed_force else 'Gracefully stopped',
+            'force_terminated': needed_force
+        }
+        
+    def get_active_time(self) -> float:
+        """Returns seconds since bot started"""
+        return time.time() - self.start_time if self.start_time else 0
+        
+    # WIP
+    def update_current_job(self, position: str, company: str):
+        """Call this when starting a new job application"""
+        self.current_position = position
+        self.current_company = company
+    
+    @property
+    def is_running(self):
+        return self.thread and self.thread.is_alive()
+</file>
+
+<file path="src/core/session_manager.py">
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Optional
+from src.core.bot_runner import BotRunner
+
+class SessionManager:
+    def __init__(self):
+        self.active_sessions: Dict[str, BotRunner] = {}
+        
+    def start_bot(self, session_id: str, config_path: Path, secrets_path: Path, resume_path: Optional[Path] = None):
+        if session_id in self.active_sessions:
+            return {'status': 'error', 'message': 'Session already exists'}
+            
+        runner = BotRunner()
+        result = runner.run(config_path, secrets_path, resume_path)
+        
+        if result['status'] == 'success':
+            self.active_sessions[session_id] = runner
+            
+        return result
+        
+    def stop_bot(self, session_id: str) -> dict:
+        """
+        Stops a bot session and returns enhanced status information
+        
+        Returns:
+            dict: {
+                'status': 'success'|'error',
+                'message': str,
+                'force_terminated': bool (if had to force quit),
+                'active_time': float (seconds bot was running),
+                'jobs_applied': int (total applications sent)
+            }
+        """
+        if session_id not in self.active_sessions:
+            return {
+                'status': 'error',
+                'message': f'Session {session_id} not found',
+                'force_terminated': False,
+                'active_time': 0,
+                'jobs_applied': 0
+            }
+            
+        runner = self.active_sessions[session_id]
+        
+        # Get stats before stopping
+        stats = {
+            'active_time': runner.get_active_time(),
+            'jobs_applied': runner.jobs_applied_count
+        }
+        
+        result = runner.stop()  # This calls the stop() we added earlier
+        
+        if result['status'] == 'success':
+            del self.active_sessions[session_id]
+            return {
+                'status': 'success',
+                'message': f'Session {session_id} stopped. {stats["jobs_applied"]} jobs applied',
+                'force_terminated': result.get('force_terminated', False),
+                **stats
+            }
+            
+        return {
+            'status': 'error',
+            'message': result['message'],
+            'force_terminated': False,
+            **stats
+        }
+        
+    def get_status(self, session_id: str):
+        runner = self.active_sessions.get(session_id)
+        if not runner:
+            return {'status': 'error', 'message': 'Session not found'}
+            
+        return {
+            'status': 'success',
+            'is_running': runner.is_running,
+            'message': 'Bot is running' if runner.is_running else 'Bot is not running'
+        }
+    
+    def get_active_sessions(self) -> dict:
+        """Returns information about all active sessions"""
+        sessions = []
+        total_jobs = 0
+        
+        for session_id, runner in self.active_sessions.items():
+            sessions.append({
+                'session_id': session_id,
+                'start_time': datetime.fromtimestamp(runner.start_time).isoformat(),
+                # 'jobs_applied': runner.jobs_applied_count, # WIP
+                # 'current_position': runner.current_position, # WIP
+                # 'current_company': runner.current_company # WIP
+            })
+            # total_jobs += runner.jobs_applied_count
+            
+        return {
+            'active_sessions': sessions,
+            # 'total_jobs_applied': total_jobs,
+            'total_active_sessions': len(sessions)
+        }
+</file>
+
+<file path="src/interfaces/gradio_ui.py">
+from datetime import datetime
+import os
+from pathlib import Path
+import time
+import gradio as gr
+import requests
+
+API_URL = "http://localhost:8054/api"  # Update if needed
+
+
+def list_yml_files():
+    data_folder = os.getenv("DATA_FOLDER")
+    if not data_folder:
+        return []
+
+    p = Path(data_folder)
+    if not p.exists() or not p.is_dir():
+        return []
+
+    # List all *.yml files (only filenames, or full paths if you prefer)
+    files = [str(f) for f in p.glob("*.yml")] + [str(f) for f in p.glob("*.yaml")]
+    return files
+
+def start_bot_ui(config_path, secrets_path, resume_path):
+    # Generate session_id based on current time, e.g. 20250615_153045
+    session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    payload = {
+        "session_id": session_id,
+        "config_path": config_path,
+        "secrets_path": secrets_path,
+        "resume_path": resume_path or None
+    }
+    try:
+        response = requests.post(f"{API_URL}/start", json=payload)
+        return response.json(), f"✅ Bot {session_id} started."
+    except Exception as e:
+        return {}, f"❌ Error: {str(e)}"
+
+def stop_bot_ui(session_id):
+    try:
+        response = requests.post(f"{API_URL}/stop", params={"session_id": session_id})
+        return response.json(), f"🛑 Stopped {session_id}" if response.ok else "❌ Failed to stop session."
+    except Exception as e:
+        return {}, f"❌ Error: {str(e)}"
+
+def list_sessions_ui():
+    response = requests.get(f"{API_URL}/sessions/active")
+    data = response.json()
+    if not data["active_sessions"]:
+        return "No active sessions."
+    table = "### Active Sessions\n\n| Session ID | Jobs Applied | Start Time |\n|------------|--------------|------------|\n"
+    for session in data["active_sessions"]:
+        table += f"| {session['session_id']} | {session.get('jobs_applied', 'N/A')} | {session.get('start_time', 'N/A')} |\n"
+    table += f"\n**Total Active Sessions**: {data['total_active_sessions']}"
+    return table
+
+def get_active_session_ids():
+    try:
+        response = requests.get(f"{API_URL}/sessions/active")
+        data = response.json()
+        return [session["session_id"] for session in data.get("active_sessions", [])]
+    except Exception:
+        return []
+
+def clear_message():
+    return gr.Textbox.update(value="", visible=False)
+
+
+
+
+def build_gradio_interface():
+    yml_files = list_yml_files()
+    config_list = [f for f in yml_files if "config" in f.lower()]
+    secrets_list = [f for f in yml_files if "secrets" in f.lower()]
+    resume_list = [f for f in yml_files if "resume" in f.lower()]
+
+    with gr.Blocks(title="LinkedIn Bot Control Panel", css=".section {border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 20px;}") as demo:
+        gr.Markdown("# 🤖 LinkedIn Auto-Apply Bot Dashboard")
+
+        # Start Bot Section
+        with gr.Column(elem_classes=["section"]):
+            gr.Markdown("## 🚀 Start New Bot Session")
+            start_msg = gr.Textbox(visible=False, interactive=False, show_label=False)
+            with gr.Row():
+                config_path = gr.Dropdown(label="Config Path", choices=config_list, value=config_list[0] if config_list else None)
+                secrets_path = gr.Dropdown(label="Secrets Path", choices=secrets_list, value=secrets_list[0] if secrets_list else None)
+                resume_path = gr.Dropdown(label="Resume Path", choices=["None"] + resume_list, value=resume_list[0] if resume_list else None)
+            with gr.Row():
+                start_button = gr.Button("Start Bot", variant="primary")
+            start_output = gr.JSON(label="Response", visible=False)
+
+            start_button.click(
+                fn=start_bot_ui,
+                inputs=[config_path, secrets_path, resume_path],
+                outputs=[start_output, start_msg]
+            )
+
+        # Stop Bot Section
+        with gr.Column(elem_classes=["section"]):
+            gr.Markdown("## 🛑 Stop Running Bot")
+            stop_msg = gr.Textbox(visible=False, interactive=False, show_label=False)
+            with gr.Row():
+                stop_dropdown = gr.Dropdown(label="Active Sessions", choices=get_active_session_ids(), interactive=True)
+                reload_dropdown_button = gr.Button("🔄 Refresh Session List")
+            with gr.Row():
+                stop_button = gr.Button("Stop Selected Bot", variant="stop")
+            stop_output = gr.JSON(label="Response", visible=False)
+
+            reload_dropdown_button.click(fn=get_active_session_ids, outputs=stop_dropdown)
+            stop_button.click(fn=stop_bot_ui, inputs=stop_dropdown, outputs=[stop_output, stop_msg])
+
+        # Active Sessions Section
+        with gr.Column(elem_classes=["section"]):
+            gr.Markdown("## 📋 Active Sessions")
+            with gr.Row():
+                refresh_button = gr.Button("🔄 Refresh Sessions")
+            session_output = gr.Markdown()
+            refresh_button.click(list_sessions_ui, outputs=session_output)
+            
+            # Initial load of sessions
+            demo.load(fn=list_sessions_ui, outputs=session_output)
+
+    return demo
+
+gradio_app = build_gradio_interface().queue().launch(prevent_thread_lock=True, share=False)
+</file>
+
+<file path="src/models/schemas.py">
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from enum import Enum
+
+class ActiveSession(BaseModel):
+    session_id: str
+    start_time: str
+    jobs_applied: Optional[int] = 0
+    current_position: Optional[str] = None
+    current_company: Optional[str] = None
+
+class ActiveSessionsResponse(BaseModel):
+    active_sessions: List[ActiveSession]
+    total_jobs_applied: Optional[int] = 0
+    total_active_sessions: int
+
+class BotStatus(str, Enum):
+    RUNNING = "running"
+    STOPPED = "stopped"
+    ERROR = "error"
+
+class BotConfig(BaseModel):
+    """
+    Configuration for starting the LinkedIn bot
+    """
+    session_id: str = Field(
+        ...,
+        description="Unique identifier for this bot session",
+        example="session_123"
+    )
+    config_path: str = Field(
+        ...,
+        description="Path to config.yaml file",
+        example="data_folder/config.yaml"
+    )
+    secrets_path: str = Field(
+        ...,
+        description="Path to secrets.yaml file",
+        example="data_folder/secrets.yaml"
+    )
+    resume_path: Optional[str] = Field(
+        None,
+        description="Optional path to resume PDF file",
+        example="data_folder/resume.pdf"
+    )
+
+class BotResponse(BaseModel):
+    """
+    Standard response format for bot operations
+    """
+    status: BotStatus
+    message: str
+    session_id: Optional[str] = None
+    details: Optional[dict] = None
+
+class BotStatusResponse(BotResponse):
+    """
+    Extended response for status checks
+    """
+    is_running: bool = Field(
+        ...,
+        description="Whether the bot is currently running"
+    )
+    jobs_applied: Optional[int] = Field(
+        None,
+        description="Number of jobs applied to in this session"
+    )
+    last_activity: Optional[str] = Field(
+        None,
+        description="Timestamp of last activity",
+        example="2023-07-15T14:30:00Z"
+    )
+</file>
+
+<file path="src/main.py">
+from fastapi import FastAPI
+from src.api.endpoints import router as api_router
+from src.interfaces.gradio_ui import gradio_app
+
+app = FastAPI()
+app.include_router(api_router, prefix="/api")
+app.mount("/gradio", gradio_app)
+
+@app.get("/")
+async def root():
+    return {"message": "LinkedIn Bot Service"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8054)
+</file>
+
+<file path="documentation.md">
+Hi, I'm working on this one!
+</file>
+
+<file path="LICENSE">
+MIT License
+
+Copyright (c) 2024 feder-cr
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice must be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+</file>
+
+<file path="data_folder/plain_text_resume_sme.yaml">
+personal_information:
+  name: "Smeralda"
+  surname: "Brigandi"
+  dateOfBirth: "21/11/1992"
+  country: "Italy"
+  city: "Messina"
+  address: ""
+  phonePrefix: "+39"
+  phone: "345 22 96 875 / 081 18835742"
+  email: "smeraldabrigandi@gmail.com"
+  github: ""
+  linkedin: "www.linkedin.com/in/smeraldabrigandi"
+
+self_identification:
+  gender: "female"
+  pronouns: ""
+  veteran: false
+  disability: false
+  ethnicity: ""
+
+legal_authorization:
+  euWorkAuthorization: true
+  usWorkAuthorization: false
+  requiresUsVisa: false
+  legallyAllowedToWorkInUs: false
+  requiresUsSponsorship: false
+  requiresEuVisa: false
+  legallyAllowedToWorkInEu: true
+  requiresEuSponsorship: false
+
+work_preferences:
+  remoteWork: false
+  inPersonWork: true
+  openToRelocation: true
+  willingToCompleteAssessments: true
+  willingToUndergoDrugTests: true
+  willingToUndergoBackgroundChecks: true
+
+education_details:
+  - degree: "Laurea in Design della Moda"
+    university: "IUAD - Accademia della Moda"
+    gpa: ""
+    graduationYear: "2020"
+    fieldOfStudy: "Fashion Design, Graphic Design, Modellistica, Modellistica digitale, Illustrazione, Storia del Costume, Sviluppo taglie"
+    skillsAcquired:
+      fashionDesign: "5"
+      graphicDesign: "4"
+      patternMaking: "4"
+      digitalPatternMaking: "4"
+      illustration: "5"
+      costumeHistory: "4"
+      sizeDevelopment: "4"
+
+experience_details:
+  - position: "Assistente alla vendita"
+    company: "Sartoria Italiana di Massimiliano Sorvino"
+    employmentPeriod: "2024 - Present"
+    location: ""
+    industry: "Fashion Retail"
+    keyResponsibilities:
+      responsibility1: "Vendita assistita"
+      responsibility2: "Sdifettamento sul cliente per eventuali modifiche sartoriali su misura"
+    skillsAcquired:
+      customerService: "4"
+      tailoring: "3"
+
+  - position: "Tutor laboratorio di Arte e Moda"
+    company: "Progetto Summer School scuola Rodari (Boscoreale) / Michelangelo s.r.l."
+    employmentPeriod: "Luglio 2024"
+    location: ""
+    industry: "Education / Fashion"
+    keyResponsibilities:
+      responsibility1: "Realizzazione di chitoni previa colorazione mediante il metodo del dye-type"
+      responsibility2: "Realizzazione di mini armature con pezzi di scatolone e decorazioni dipinte a mano"
+      responsibility3: "Contestualizzazione storica"
+    skillsAcquired:
+      artEducation: "4"
+      historicalContext: "4"
+      creativeWorkshops: "5"
+
+  - position: "Assistente Stilista (collezione UOMO e DONNA)"
+    company: "Psicopatici italia"
+    employmentPeriod: "2023 - 2024"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Figurinista e Fashion Illustrator"
+      responsibility2: "Ricerca dei trend"
+      responsibility3: "Progettazione e realizzazione moodboard"
+      responsibility4: "Progettazione grafica stampe"
+      responsibility5: "Sdifettamento prototipi"
+      responsibility6: "Realizzazione schede tecniche e relativi plat"
+      responsibility7: "Stylist Junior per gli outfit indossati in shooting ed eventi del Brand"
+    skillsAcquired:
+      fashionIllustration: "5"
+      trendResearch: "4"
+      moodboardCreation: "5"
+      printDesign: "4"
+      prototyping: "4"
+      technicalSheets: "4"
+      styling: "4"
+
+  - position: "Assistente Stilista (collezione DONNA)"
+    company: "H2O e PIA.B. / Battaglia Fashion Group"
+    employmentPeriod: "2022 - 2023"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Fashion Illustrator"
+      responsibility2: "Ricerca dei trend"
+      responsibility3: "Progettazione e realizzazione moodboard"
+      responsibility4: "Illustrazione e realizzazione workbook"
+      responsibility5: "Realizzazione schede tecniche e relativi plat"
+      responsibility6: "Gestione comunicazione coi fornitori per l’invio e le spiegazioni delle relative schede tecniche"
+      responsibility7: "Creazione di minivideo per i Social aziendali con le illustrazioni e i mood realizzati"
+    skillsAcquired:
+      fashionIllustration: "5"
+      trendResearch: "4"
+      moodboardCreation: "5"
+      workbookCreation: "4"
+      technicalSheets: "4"
+      supplierCommunication: "3"
+      socialMediaContent: "3"
+
+  - position: "Assistente Stilista (collezione DONNA)"
+    company: "FRACOMINA p.f.c.m.n.a."
+    employmentPeriod: "2021 - 2022"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Ricerca dei trend"
+      responsibility2: "Progettazione e realizzazione moodboard"
+      responsibility3: "Fashion Illustrator"
+      responsibility4: "Realizzazione schede tecniche e relativi plat (in italiano e in inglese)"
+      responsibility5: "Sdifettamento prototipi"
+    skillsAcquired:
+      trendResearch: "4"
+      moodboardCreation: "5"
+      fashionIllustration: "5"
+      technicalSheets: "4"
+      bilingualCommunication: "3"
+      prototyping: "4"
+
+  - position: "Op. CAD e Assistente stilista (collezione DONNA)"
+    company: "Roberta Biagi s.r.l"
+    employmentPeriod: "2020 - 2021"
+    location: ""
+    industry: "Fashion Design"
+    keyResponsibilities:
+      responsibility1: "Realizzazione distinte basi"
+      responsibility2: "Progettazione capsule collection"
+      responsibility3: "Realizzazione plat"
+      responsibility4: "Progettazione e digitalizzazione cartamodelli"
+      responsibility5: "Gestione Prototipia"
+      responsibility6: "Sviluppo taglie"
+    skillsAcquired:
+      cadOperations: "4"
+      capsuleCollection: "4"
+      patternDigitalization: "4"
+      prototyping: "4"
+      sizeDevelopment: "4"
+
+projects: ""
+
+availability:
+  noticePeriod: ""
+
+salary_expectations:
+  salaryRangeUSD: "€36,000-38,000 annual"
+  salaryRangeEUR: "€36,000-38,000 annual"
+  annualSalary: "30000 annual"
+
+certifications: ""
+
+skills:
+  fashionIllustration: 5
+  trendResearch: 4
+  moodboardCreation: 5
+  printDesign: 4
+  technicalSheets: 4
+  styling: 4
+  supplierCommunication: 3
+  socialMediaContent: 3
+  bilingualCommunication: 3
+  cadOperations: 4
+  patternDigitalization: 4
+  prototyping: 4
+  sizeDevelopment: 4
+  customerService: 4
+  tailoring: 3
+  artEducation: 4
+  historicalContext: 4
+  creativeWorkshops: 5
+
+languages:
+  - language: "Italian"
+    proficiency: "Native"
+  - language: "English"
+    proficiency: "Professional"
+  - language: "French"
+    proficiency: ""
+  - language: "German"
+    proficiency: ""
+
+interests:
+  - "Disegno"
+  - "Arte"
+  - "Letteratura"
+  - "Storia"
+  - "Cinema"
+</file>
+
+<file path="resume_template/reorganizeHeader.js">
+// reorganizeHeader.js
+function reorganizeHeader() {
+  const h1 = document.querySelector('h1');
+  if (!h1) return; 
+  let currentNode = h1;
+  const headerInfoElements = [];
+  const contactInfoElements = [];
+  let firstAnchorFound = false;
+  while (currentNode && currentNode.tagName !== 'H2') {
+    if (currentNode.tagName === 'A') {
+      if (!firstAnchorFound) {
+        headerInfoElements.push(currentNode);
+        firstAnchorFound = true;
+      } else {
+        contactInfoElements.push(currentNode);
+      }
+    } else {
+      headerInfoElements.push(currentNode);
+    }
+    currentNode = currentNode.nextElementSibling;
+  }
+  const newHeader = document.createElement('header');
+  const headerInfoDiv = document.createElement('div');
+  headerInfoDiv.className = 'header-info';
+  headerInfoElements.forEach(el => {
+    headerInfoDiv.appendChild(el);
+  });
+  const contactInfoDiv = document.createElement('div');
+  contactInfoDiv.className = 'contact-info';
+  contactInfoElements.forEach(el => {
+    contactInfoDiv.appendChild(el);
+  });
+  newHeader.appendChild(headerInfoDiv);
+  newHeader.appendChild(contactInfoDiv);
+  const h2 = document.querySelector('h2');
+  if (h2) {
+    h2.parentNode.insertBefore(newHeader, h2);
+  }
+}
+
+  setTimeout(function() {
+    reorganizeHeader();
+  }, 1000);
+</file>
+
+<file path="Dockerfile">
+FROM python:3.10
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+# Create data directory
+RUN mkdir -p /app/data_folder/output
+
+ENV PYTHONPATH=/app \
+    DATA_FOLDER=/app/data_folder \
+    PYTHONUNBUFFERED=1 \
+    PORT=8054
+
+# Expose both FastAPI and Gradio ports
+EXPOSE 8054 7860
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8054"]
+</file>
+
+<file path="data_folder_example/secrets.yaml">
+email: myemaillinkedin@gmail.com
+password: ImpossiblePassowrd10
+openai_api_key: sk-11KRr4uuTwpRGfeRTfj1T9BlbkFJjP8QTrswHU1yGruru2FR
+</file>
+
+<file path="docker-compose.yml">
+version: '3.8'
+
+services:
+  chrome:
+    image: selenium/standalone-chrome:4.33.0-20250606
+    shm_size: 2gb
+    ports:
+      - "4444:4444"
+      - "5900:5900"
+    volumes:
+      - /dev/shm:/dev/shm
+
+  linkedin-bot:
+    build: .
+    depends_on:
+      - chrome
+    ports:
+      - "8054:8054"  # FastAPI port
+      - "7860:7860"  # Gradio UI port
+    volumes:
+      - ./data_folder:/app/data_folder  # Persist data
+    environment:
+      - DATA_FOLDER=/app/data_folder
+      - SELENIUM_REMOTE_URL=http://chrome:4444
+    restart: unless-stopped
+</file>
+
+<file path="requirements.txt">
+aiofiles==24.1.0
+aiohappyeyeballs==2.6.1
+aiohttp==3.12.6
+aiosignal==1.3.2
+annotated-types==0.7.0
+anyio==4.9.0
+arabic-reshaper==3.0.0
+asn1crypto==1.5.1
+attrs==25.3.0
+certifi==2025.4.26
+cffi==1.17.1
+chardet==5.2.0
+charset-normalizer==3.4.2
+click==8.2.1
+cryptography==45.0.3
+cssselect2==0.8.0
+dataclasses-json==0.6.7
+distro==1.9.0
+fastapi==0.115.12
+ffmpy==0.6.0
+filelock==3.18.0
+frozenlist==1.6.0
+fsspec==2025.5.1
+gradio==5.34.0
+gradio_client==1.10.3
+greenlet==3.2.2
+groovy==0.1.2
+h11==0.16.0
+hf-xet==1.1.3
+html5lib==1.1
+httpcore==1.0.9
+httpx==0.27.2
+huggingface-hub==0.33.0
+idna==3.10
+Jinja2==3.1.6
+jsonpatch==1.33
+jsonpointer==3.0.0
+langchain==0.2.11
+langchain-community==0.2.10
+langchain-core==0.2.24
+langchain-openai==0.1.17
+langchain-text-splitters==0.2.2
+langsmith==0.1.93
+Levenshtein==0.25.1
+loguru==0.7.3
+lxml==5.4.0
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+marshmallow==3.26.1
+mdurl==0.1.2
+multidict==6.4.4
+mypy_extensions==1.1.0
+numpy==1.26.4
+openai==1.37.1
+orjson==3.10.18
+oscrypto==1.3.0
+outcome==1.3.0.post0
+packaging==24.2
+pandas==2.3.0
+pillow==11.2.1
+propcache==0.3.1
+pycparser==2.22
+pydantic==2.11.5
+pydantic_core==2.33.2
+pydub==0.25.1
+Pygments==2.19.1
+pyHanko==0.29.0
+pyhanko-certvalidator==0.27.0
+pypdf==5.5.0
+PySocks==1.7.1
+python-bidi==0.6.6
+python-dateutil==2.9.0.post0
+python-dotenv==1.1.0
+python-multipart==0.0.20
+pytz==2025.2
+PyYAML==6.0.2
+RapidFuzz==3.13.0
+regex==2024.7.24
+reportlab==4.2.2
+requests==2.32.3
+rich==14.0.0
+ruff==0.11.13
+safehttpx==0.1.6
+selenium==4.9.1
+semantic-version==2.10.0
+shellingham==1.5.4
+six==1.17.0
+sniffio==1.3.1
+sortedcontainers==2.4.0
+SQLAlchemy==2.0.41
+starlette==0.46.2
+svglib==1.5.1
+tenacity==8.5.0
+tiktoken==0.9.0
+tinycss2==1.4.0
+tomlkit==0.13.3
+tqdm==4.67.1
+trio==0.30.0
+trio-websocket==0.12.2
+typer==0.16.0
+typing-inspect==0.9.0
+typing-inspection==0.4.1
+typing_extensions==4.13.2
+tzdata==2025.2
+tzlocal==5.3.1
+uritools==5.0.0
+urllib3==2.4.0
+uvicorn==0.34.3
+webdriver-manager==4.0.2
+webencodings==0.5.1
+websockets==15.0.1
+wsproto==1.2.0
+xhtml2pdf==0.2.17
+yarl==1.20.0
+</file>
+
+<file path="data_folder_example/plain_text_resume.yaml">
+personal_information:
+  name: "Mario"
+  surname: "Rossi"
+  dateOfBirth: "15/09/1988"
+  country: "Italy"
+  city: "Milan"
+  address: "Via Montenapoleone 10, 20121 Milan"
+  phonePrefix: "+39"
+  phone: "3351234567"
+  email: "mario.rossi@techcode.it"
+  github: "https://github.com/mario-rossi-dev"
+  linkedin: "https://www.linkedin.com/in/mario-rossi-developer/"
+
+self_identification:
+  gender: "Male"
+  pronouns: "He/Him"
+  veteran: false
+  disability: false
+  ethnicity: "Mediterranean"
+
+legal_authorization:
+  euWorkAuthorization: true
+  usWorkAuthorization: false
+  requiresUsVisa: true
+  legallyAllowedToWorkInUs: false
+  requiresUsSponsorship: true
+  requiresEuVisa: false
+  legallyAllowedToWorkInEu: true
+  requiresEuSponsorship: false
+
+work_preferences:
+  remoteWork: true
+  inPersonWork: true
+  openToRelocation: true
+  willingToCompleteAssessments: true
+  willingToUndergoDrugTests: true
+  willingToUndergoBackgroundChecks: true
+
+education_details:
+  - degree: "Master"
+    university: "Politecnico di Milano"
+    gpa: "3.8/4"
+    graduationYear: "2012"
+    fieldOfStudy: "Computer Engineering"
+    skillsAcquired:
+      artificialIntelligence: "4"
+      dataScience: "3"
+      cloudComputing: "3"
+
+experience_details:
+  - position: "Senior Software Engineer"
+    company: "TechInnovate S.p.A."
+    employmentPeriod: "06/2018 - Present"
+    location: "Milan, Italy"
+    industry: "FinTech"
+    keyResponsibilities:
+      responsibility1: "Led development of real-time trading algorithm, improving transaction speed by 40%"
+      responsibility2: "Implemented CI/CD pipeline, reducing deployment time from days to hours"
+      responsibility3: "Mentored junior developers, increasing team productivity by 25% over 6 months"
+    skillsAcquired:
+      java: "5"
+      springBoot: "4"
+      kubernetes: "3"
+      aws: "4"
+      microservices: "4"
+      agileMethodologies: "5"
+
+projects:
+  project1: "Developed a high-frequency trading platform using Java and Spring Boot, processing over 1 million transactions per second"
+  project2: "Led the migration of legacy systems to a microservices architecture, improving system reliability by 99.99%"
+
+availability:
+  noticePeriod: "3 months"
+
+salary_expectations:
+  salaryRangeUSD: "90000"
+
+certifications:
+  - "AWS Certified Solutions Architect"
+  - "Oracle Certified Professional, Java SE 11 Developer"
+  - "Certified Scrum Master"
+  
+skills:
+  leadership: 6
+  problemSolving: 4
+  criticalThinking: 3
+  adaptability: 2
+  perfectionism: 2
+  blockchain: 3
+  iot: 3
+  python: 3
+  fullStackDevelopment: 3
+  databaseManagement: 3
+  versionControl: 3
+  agileMethodologies: 2
+  devOpsPractices: 2
+  algorithmDesign: 3
+  mobileAppDevelopment: 2
+  softwareArchitecture: 3
+  teamCollaboration: 2
+  documentation: 2
+  java: 3
+  cSharp: 3
+  c: 3
+  cPlusPlus: 3
+  javascript: 3
+  php: 3
+  sql: 3
+  noSql: 3
+  mysql: 3
+  firebase: 3
+  continuousIntegration: 2
+  continuousDeployment: 2
+  optimization: 3
+
+languages:
+  - language: "Italian"
+    proficiency: "Native"
+  - language: "English"
+    proficiency: "Fluent"
+  - language: "Spanish"
+    proficiency: "Intermediate"
+
+interests:
+  - "Open Source Contributing"
+  - "Machine Learning"
+  - "Hiking"
+  - "Chess"
+</file>
+
+<file path="data_folder_example/config.yaml">
+remote: true
+
+experienceLevel:
+  internship: true
+  entry: false
+  associate: true
+  mid-senior level: false
+  director: true
+  executive: false
+
+jobTypes:
+  full-time: true
+  contract: false
+  part-time: false
+  temporary: true
+  internship: false
+  other: false
+  volunteer: true
+
+date:
+  all time: false
+  month: true
+  week: false
+  24 hours: true
+
+positions:
+  - Software developer
+
+locations:
+  - Germany
+
+distance: 100
+
+companyBlacklist:
+  - Noir
+  - Crossover
+
+titleBlacklist:
+</file>
+
+<file path="data_folder/config.yaml">
+remote: true
+
+experienceLevel:
+ internship: false
+ entry: false
+ associate: true
+ mid-senior level: true
+ director: true
+ executive: false
+
+jobTypes:
+ full-time: true
+ contract: false
+ part-time: false
+ temporary: false
+ internship: true
+ other: true
+ volunteer: false
+
+date:
+ all time: true
+ month: true
+ week: true
+ 24 hours: true
+
+positions:
+  - Software developer
+
+locations:
+  - Italy
+
+distance: 100
+
+companyBlacklist:
+  - Company1
+  - Company2
+
+titleBlacklist:
+  - word1
+  - word2
+</file>
+
+<file path="data_folder/plain_text_resume.yaml">
+personal_information:
+  name: "Simone Martin"
+  surname: "Marotta"
+  dateOfBirth: "04/09/1993"
+  country: "Italy"
+  city: "Naples"
+  address: ""
+  phonePrefix: "+39"
+  phone: "3394344414"
+  email: "93simonster@gmail.com"
+  github: "https://github.com/c0pper"
+  linkedin: "https://www.linkedin.com/in/simone-martin-marotta/"
+
+self_identification:
+  gender: "Male"
+  pronouns: ""
+  veteran: false
+  disability: false
+  ethnicity: ""
+
+legal_authorization:
+  euWorkAuthorization: true
+  usWorkAuthorization: false
+  requiresUsVisa: false
+  legallyAllowedToWorkInUs: false
+  requiresUsSponsorship: false
+  requiresEuVisa: false
+  legallyAllowedToWorkInEu: true
+  requiresEuSponsorship: false
+
+work_preferences:
+  remoteWork: true
+  inPersonWork: true
+  openToRelocation: true
+  willingToCompleteAssessments: true
+  willingToUndergoDrugTests: true
+  willingToUndergoBackgroundChecks: true
+
+education_details:
+  - degree: "Master's degree"
+    university: "Università di Napoli L'Orientale"
+    gpa: "110/110 (Italian grading scale)"
+    graduationYear: "2021"
+    fieldOfStudy: "Language Interpretation and Translation"
+    skillsAcquired:
+      translation: "5 years"
+      interculturalCommunication: "5 years"
+      technicalTranslation: "3 years"
+      machineTranslation: "2 years"
+      CATTools: "3 years (SDL Trados)"
+      localization: "3 years"
+      crossCulturalAwareness: "5 years"
+      ITOptimization: "3 years"
+
+  - degree: "Bachelor's degree"
+    university: "Università di Napoli L'Orientale"
+    gpa: "102/110 (Italian grading scale)"
+    graduationYear: "2016"
+    fieldOfStudy: "Linguistic Mediation"
+    skillsAcquired:
+      multilingualism: "5 years"
+      interculturalCommunication: "5 years"
+      languageTeaching: "3 years"
+      technicalTranslation: "3 years"
+      digitalLocalization: "5 years"
+      CATTools: "3 years"
+
+experience_details:
+  - position: "Knowledge Engineer"
+    company: "expert.ai"
+    employmentPeriod: "May 2021 - Present"
+    location: "Naples, Campania, Italy"
+    industry: "Artificial Intelligence"
+    keyResponsibilities:
+      responsibility1: "Designed and developed hybrid NLP solutions combining traditional ML and LLM models."
+      responsibility2: "Built RAG chatbots using proprietary and open-source Large Language Models (LLMs)."
+      responsibility3: "Monitored and optimized prompt performance for AI systems, ensuring effectiveness."
+      responsibility4: "Led full AI project life cycles using Agile and Dev/MLOps methodologies."
+      responsibility5: "Acted as NLP technical partner for customers, tailoring solutions to their needs."
+      responsibility6: "Designed and implemented frontend/backend architectures for AI applications."
+      responsibility7: "Conducted project retrospectives, documenting lessons learned and best practices."
+    skillsAcquired:
+      leadership: "4 years"
+      problemSolving: "4 years"
+      criticalThinking: "4 years"
+      adaptability: "4 years"
+      NLP: "4 years"
+      machineLearning: "4 years"
+      python: "4 years"
+      LLMs: "2 years"
+      RAG: "2 years"
+      agile: "4 years"
+      MLOps: "3 years"
+      backendDevelopment: "3 years"
+      frontendDevelopment: "2 years"
+
+  - position: "English Teacher"
+    company: "Istituto Scolastico Sant'Agostino"
+    employmentPeriod: "Feb 2021 - Mar 2021"
+    location: "Aversa, Campania, Italy"
+    industry: "Education"
+    keyResponsibilities:
+      responsibility1: "Planning and delivering English lessons for kindergarten learners"
+      responsibility2: "Utilising classroom management techniques to improve efficiency of lessons"
+      responsibility3: "Enriching the lesson by including additional audio-visual material"
+    skillsAcquired:
+      teaching: "1 month"
+      classroomManagement: "1 month"
+
+projects:
+  project1: "SILVANUS - A climate resilient forest management platform to prevent and suppress forest fires. (https://silvanus-project.eu)"
+  project2: "enRichMyData - An open software toolbox for enriching data with reference data. (https://enrichmydata.eu)"
+  project3: "C4E (Crowd for the Environment) - Framework for the detection and monitoring of illegal spills. (https://example.com)"
+  project4: "SCUDO - Software for automatic analysis of legal documents. (https://example.com)"
+
+availability:
+  noticePeriod: "45 days"
+
+salary_expectations:
+  salaryRangeUSD: "€36,000-38,000 annual"
+  salaryRangeEUR: "€36,000-38,000 annual"
+  annualSalary: "30000 annual"
+
+certifications:
+  - "Training Certificate in Data Privacy and Security from ICTLC"
+  - "Attestato di frequenza Corso di Formazione relativo all'organizzazione aziendale from IFOA"
+  - "Attestato di frequenza Corso di Formazione relativo alla comunicazione aziendale from IFOA"
+
+skills:
+  problemSolving: "10 years"
+  criticalThinking: "4 years"
+  adaptability: "4 years"
+  python: "4 years"
+  machineLearning: "4 years"
+  javascript: "2 years"
+  translation: "7 years"
+  teaching: "2 years"
+  reactjs: "2 years"
+  flask: "2 years"
+  fastapi: "2 years"
+  django: "1 year"
+  tensorflow: "2 years"
+  nlp: "4 years"
+  pandas: "2 years"
+  docker: "4 years"
+  apiDevelopment: "2 years"
+  responsiveWebDesign: "1 year"
+  ciCd: "2 years"
+  opencv: "1 year"
+  dataScience: "2 years"
+  dataVisualization: "2 years"
+
+languages:
+  - language: "Italian"
+    proficiency: "Native"
+  - language: "English"
+    proficiency: "Professional"
+
+interests:
+  - "AI and how it can actually be useful"
+  - "Building smart tools to automate boring stuff"
+  - "Making sense of messy data and turning it into knowledge"
+  - "Privacy, security, and not being tracked everywhere"
+  - "Teaching, explaining things clearly, and learning in public"
+  - "Languages, how people communicate, and what shapes meaning"
+  - "Biking around the city and finding the quietest routes"
+  - "Living efficiently without overcomplicating life"
+  - "Coffee, sandwiches, and finding small daily comforts"
+  - "Figuring out how to stay active and sane in winter"
+</file>
+
+<file path=".gitignore">
+*.csv
+__pycache__/**
+.idea/**
+open_ai_calls.log
+test*
+openaiSelenium*
+open_ai_calls.json
+_*
+.venv
+generated_cv*
+resume.html
+.vscode
+chrome_profile
+data_folder/secrets.yaml
+.logs/
+</file>
+
+<file path="README.md">
+# LinkedIn_AIHawk
+
+🚀 **Join Our Telegram Community!** 🚀
+
+Join our **Telegram community** for:
+- **Support with AIHawk software**
+- **Share your experiences** with AIhawk and learn from others
+- **Job search tips** and **resume advice**
+- **Idea exchange** and resources for your projects
+
+📲 **[Join now!](https://t.me/AIhawkCommunity)**
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Features](#features)
+3. [Installation](#installation)
+4. [Configuration](#configuration)
+5. [Usage](#usage)
+6. [Documentation](#Documentation)
+7. [Troubleshooting](#troubleshooting)
+8. [Conclusion](#conclusion)
+9. [Contributors](#contributors)
+10. [Credits](#credits)
+11. [License](#license)
+12. [Disclaimer](#Disclaimer)
+
+## Introduction
+
+LinkedIn_AIHawk is a cutting-edge, automated tool designed to revolutionize the job search and application process on LinkedIn. In today's fiercely competitive job market, where opportunities can vanish in the blink of an eye, this program offers job seekers a significant advantage. By leveraging the power of automation and artificial intelligence, LinkedIn_AIHawk enables users to apply to a vast number of relevant positions efficiently and in a personalized manner, maximizing their chances of landing their dream job.
+
+### The Challenge of Modern Job Hunting
+
+In the digital age, the job search landscape has undergone a dramatic transformation. While online platforms like LinkedIn have opened up a world of opportunities, they have also intensified competition. Job seekers often find themselves spending countless hours scrolling through listings, tailoring applications, and repetitively filling out forms. This process can be not only time-consuming but also emotionally draining, leading to job search fatigue and missed opportunities.
+
+### Enter LinkedIn_AIHawk: Your Personal Job Search Assistant
+
+LinkedIn_AIHawk steps in as a game-changing solution to these challenges. It's not just a tool; it's your tireless, 24/7 job search partner. By automating the most time-consuming aspects of the job search process, it allows you to focus on what truly matters - preparing for interviews and developing your professional skills.
+
+## Features
+
+1. **Intelligent Job Search Automation**
+   - Customizable search criteria
+   - Continuous scanning for new openings
+   - Smart filtering to exclude irrelevant listings
+
+2. **Rapid and Efficient Application Submission**
+   - One-click applications using LinkedIn's "Easy Apply" feature
+   - Form auto-fill using your profile information
+   - Automatic document attachment (resume, cover letter)
+
+3. **AI-Powered Personalization**
+   - Dynamic response generation for employer-specific questions
+   - Tone and style matching to fit company culture
+   - Keyword optimization for improved application relevance
+
+4. **Volume Management with Quality**
+   - Bulk application capability
+   - Quality control measures
+   - Detailed application tracking
+
+5. **Intelligent Filtering and Blacklisting**
+   - Company blacklist to avoid unwanted employers
+   - Title filtering to focus on relevant positions
+
+6. **Dynamic Resume Generation**
+   - Automatically creates tailored resumes for each application
+   - Customizes resume content based on job requirements
+
+7. **Secure Data Handling**
+   - Manages sensitive information securely using YAML files
+
+## Installation
+
+1. **Download and Install Python:**
+
+   Ensure you have Python installed. If not, download and install it from Python's official website. For detailed instructions, refer to the tutorials:
+
+   - [How to Install Python on Windows](https://www.geeksforgeeks.org/how-to-install-python-on-windows/)
+   - [How to Install Python on Linux](https://www.geeksforgeeks.org/how-to-install-python-on-linux/)
+   - [How to Download and Install Python on macOS](https://www.geeksforgeeks.org/how-to-download-and-install-python-latest-version-on-macos-mac-os-x/)
+
+2. **Download and Install Google Chrome:**
+   - Download and install the latest version of Google Chrome in its default location from the [official website](https://www.google.com/chrome).
+
+3. **Clone the repository:**
+   ```bash
+   git clone https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application
+   cd LinkedIn_AIHawk_automatic_job_application
+   ```
+
+4. **Install the required packages:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Configuration
+
+### 1. secrets.yaml
+
+This file contains sensitive information. Never share or commit this file to version control.
+
+- `email: [Your LinkedIn email]`
+  - Replace with your LinkedIn account email address
+- `password: [Your LinkedIn password]`
+  - Replace with your LinkedIn account password
+- `openai_api_key: [Your OpenAI API key]`
+  - Replace with your OpenAI API key for GPT integration
+  - To obtain an API key, follow the tutorial at: https://medium.com/@lorenzozar/how-to-get-your-own-openai-api-key-f4d44e60c327
+  - Note: You need to add credit to your OpenAI account to use the API. You can add credit by visiting the [OpenAI billing dashboard](https://platform.openai.com/account/billing).
+
+
+
+### 2. config.yaml
+
+This file defines your job search parameters and bot behavior. Each section contains options that you can customize:
+
+- `remote: [true/false]`
+  - Set to `true` to include remote jobs, `false` to exclude them
+
+- `experienceLevel:`
+  - Set desired experience levels to `true`, others to `false`
+
+- `jobTypes:`
+  - Set desired job types to `true`, others to `false`
+
+- `date:`
+  - Choose one time range for job postings by setting it to `true`, others to `false`
+
+
+- `positions:`
+  - List job titles you're interested in, one per line
+  - Example:
+    ```yaml
+    positions:
+      - Software Developer
+      - Data Scientist
+    ```
+
+- `locations:`
+  - List locations you want to search in, one per line
+  - Example:
+    ```yaml
+    locations:
+      - Italy
+      - London
+    ```
+
+- `distance: [number]`
+  - Set the radius for your job search in miles
+  - Example: `distance: 50`
+
+- `companyBlacklist:`
+  - List companies you want to exclude from your search, one per line
+  - Example:
+    ```yaml
+    companyBlacklist:
+      - Company X
+      - Company Y
+    ```
+
+- `titleBlacklist:`
+  - List keywords in job titles you want to avoid, one per line
+  - Example:
+    ```yaml
+    titleBlacklist:
+      - Sales
+      - Marketing
+    ```
+
+### 3. plain_text_resume.yaml
+
+This file contains your resume information in a structured format. Fill it out with your personal details, education, work experience, and skills. This information is used to auto-fill application forms and generate customized resumes.
+
+Each section has specific fields to fill out:
+
+- `personal_information:`
+  - Contains basic personal details
+  - Example: `name: "John Doe"`
+
+- `self_identification:`
+  - Optional demographic information
+  - Example: `gender: "Male"`
+
+- `legal_authorization:`
+  - Work authorization status
+  - Use `true` or `false` for each field
+  - Example: `usWorkAuthorization: true`
+
+- `work_preferences:`
+  - Your work-related preferences
+  - Use `true` or `false` for each field
+  - Example: `remoteWork: true`
+
+- `education_details:`
+  - List your educational background
+  - Include degree, university, GPA, graduation year, field of study, and skills acquired
+  - Example:
+    ```yaml
+    - degree: "Bachelor's"
+      university: "University of Example"
+      gpa: "3.8"
+      graduationYear: "2022"
+      fieldOfStudy: "Computer Science"
+      skillsAcquired:
+        problemSolving: "4"
+    ```
+
+- `experience_details:`
+  - List your work experiences
+  - Include position, company, employment period, location, industry, key responsibilities, and skills acquired
+  - Example:
+    ```yaml
+    - position: "Software Developer"
+      company: "Tech Corp"
+      employmentPeriod: "Jan 2020 - Present"
+      location: "San Francisco, USA"
+      industry: "Technology"
+      keyResponsibilities:
+        responsibility1: "Developed web applications using React"
+      skillsAcquired:
+        adaptability: "3"
+    ```
+
+- Other sections like `projects`, `availability`, `salary_expectations`, `certifications`, `skills`, `languages`, and `interests` follow a similar format, with each item on a new line.
+
+### PLUS. data_folder_example
+
+The `data_folder_example` folder contains a working example of how the files necessary for the bot's operation should be structured and filled out. This folder serves as a practical reference to help you correctly set up your work environment for the LinkedIn job search bot.
+
+#### Contents
+
+Inside this folder, you'll find example versions of the key files:
+
+- `secrets.yaml`
+- `config.yaml`
+- `plain_text_resume.yaml`
+
+These files are already populated with fictitious but realistic data. They show you the correct format and type of information to enter in each file.
+
+#### Usage
+
+Using this folder as a guide can be particularly helpful for:
+
+1. Understanding the correct structure of each configuration file
+2. Seeing examples of valid data for each field
+3. Having a reference point while filling out your personal files
+
+#### Important Note
+
+## Usage
+0. **LinkedIn language**
+   To ensure the bot works, your LinkedIn language must be set to English.
+   
+2. **Data Folder:**
+   Ensure that your data_folder contains the following files:
+   - `secrets.yaml`
+   - `config.yaml`
+   - `plain_text_resume.yaml`
+
+3. **Run the Bot:**
+
+   LinkedIn_AIHawk offers flexibility in how it handles your pdf resume:
+
+- **Dynamic Resume Generation:**
+  If you don't use the `--resume` option, the bot will automatically generate a unique resume for each application. This feature uses the information from your `plain_text_resume.yaml` file and tailors it to each specific job application, potentially increasing your chances of success by customizing your resume for each position.
+   ```bash
+   python main.py
+   ```
+- **Using a Specific Resume:**
+  If you want to use a specific PDF resume for all applications, run the bot with the `--resume` option:
+  ```bash
+  python main.py --resume /path/to/your/resume.pdf
+  ```
+
+## Documentation
+
+For detailed information on each component and their respective roles, please refer to the [Documentation](documentation.md) file.
+
+## Troubleshooting
+
+- **ChromeDriver Issues:** Ensure ChromeDriver is compatible with your installed Chrome version.
+- **Missing Files:** Verify that all necessary files are present in the data folder.
+- **Invalid YAML:** Check your YAML files for syntax errors.
+
+  If you encounter any issues, you can open an issue on [GitHub](https://github.com/feder-cr/linkedIn_auto_jobs_applier_with_AI/issues). I'll be more than happy to assist you!
+
+## Conclusion
+
+LinkedIn_AIHawk provides a significant advantage in the modern job market by automating and enhancing the job application process. With features like dynamic resume generation and AI-powered personalization, it offers unparalleled flexibility and efficiency. Whether you're a job seeker aiming to maximize your chances of landing a job, a recruiter looking to streamline application submissions, or a career advisor seeking to offer better services, LinkedIn_AIHawk is an invaluable resource. By leveraging cutting-edge automation and artificial intelligence, this tool not only saves time but also significantly increases the effectiveness and quality of job applications in today's competitive landscape.
+
+## Contributors
+
+- [feder-cr](https://github.com/feder-cr/) - Creator and Maintainer
+
+LinkedIn_AIHawk is still in beta, and your feedback, suggestions, and contributions are highly valued. Feel free to open issues, suggest enhancements, or submit pull requests to help improve the project. Let's work together to make LinkedIn_AIHawk an even more powerful tool for job seekers worldwide.
+
+## Credits
+
+### casual-markdown
+- **Description:** This project uses the casual-markdown library, a lightweight regex-based Markdown parser with Table of Contents (TOC) support.
+- **Author:** [casualwriter](https://github.com/casualwriter)
+- **Repository:** [casual-markdown](https://github.com/casualwriter/casual-markdown)
+
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+LinkedIn_AIHawk is developed for educational purposes only. The creator does not assume any responsibility for its use. Users should ensure they comply with LinkedIn's terms of service, any applicable laws and regulations, and ethical considerations when using this tool. The use of automated tools for job applications may have implications on user accounts, and caution is advised.
+</file>
+
+</files>

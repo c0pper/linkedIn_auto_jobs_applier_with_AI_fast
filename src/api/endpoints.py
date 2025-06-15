@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pathlib import Path
-from core.session_manager import SessionManager
+from src.core.session_manager import SessionManager
 from src.models.schemas import ActiveSession, ActiveSessionsResponse, BotConfig, BotResponse, BotStatus, BotStatusResponse
 
 router = APIRouter()

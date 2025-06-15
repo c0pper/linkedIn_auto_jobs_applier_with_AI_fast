@@ -4,8 +4,10 @@ from pathlib import Path
 import time
 import gradio as gr
 import requests
+from dotenv import load_dotenv
+load_dotenv()
 
-API_URL = "http://localhost:8054/api"  # Update if needed
+API_URL = os.getenv("API_URL", "http://api:8054/api")
 
 
 def list_yml_files():
@@ -101,7 +103,7 @@ def build_gradio_interface():
             gr.Markdown("## 🛑 Stop Running Bot")
             stop_msg = gr.Textbox(visible=False, interactive=False, show_label=False)
             with gr.Row():
-                stop_dropdown = gr.Dropdown(label="Active Sessions", choices=get_active_session_ids(), interactive=True)
+                stop_dropdown = gr.Dropdown(label="Active Sessions", choices=get_active_session_ids(), interactive=True, allow_custom_value=True)
                 reload_dropdown_button = gr.Button("🔄 Refresh Session List")
             with gr.Row():
                 stop_button = gr.Button("Stop Selected Bot", variant="stop")
@@ -123,4 +125,6 @@ def build_gradio_interface():
 
     return demo
 
-gradio_app = build_gradio_interface().queue().launch(prevent_thread_lock=True, share=False)
+gradio_app = build_gradio_interface().queue()
+if __name__ == "__main__":
+    gradio_app.launch(server_name="0.0.0.0", server_port=7860)

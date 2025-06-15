@@ -127,3 +127,9 @@ class Resume:
                 ) + "\n\n"
                 "Interests:\n" + ", ".join(self.interests)
             )
+
+if __name__ == "__main__":
+    resume = Resume(open("data_folder/plain_text_resume_sme.yaml", "r").read())
+    print(resume.salary_expectations.salaryRangeUSD)
+    string = str(resume)
+    print(string)

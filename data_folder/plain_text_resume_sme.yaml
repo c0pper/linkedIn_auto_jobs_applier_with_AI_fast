@@ -160,7 +160,7 @@ experience_details:
       prototyping: "4"
       sizeDevelopment: "4"
 
-projects: ""
+projects: {}
 
 availability:
   noticePeriod: ""
@@ -170,7 +170,7 @@ salary_expectations:
   salaryRangeEUR: "€36,000-38,000 annual"
   annualSalary: "30000 annual"
 
-certifications: ""
+certifications: []
 
 skills:
   fashionIllustration: 5
