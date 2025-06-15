@@ -10,4 +10,12 @@ COPY . .
 # Create data directory
 RUN mkdir -p /app/data_folder/output
 
-CMD ["python", "main.py"]
+ENV PYTHONPATH=/app \
+    DATA_FOLDER=/app/data_folder \
+    PYTHONUNBUFFERED=1 \
+    PORT=8054
+
+# Expose both FastAPI and Gradio ports
+EXPOSE 8054 7860
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8054"]

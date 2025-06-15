@@ -1,18 +1,19 @@
 import os
 import re
 from pathlib import Path
+from typing import Any
 import yaml
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 import click
 
-from utils import chromeBrowserOptions
-from gpt import GPTAnswerer
-from linkedIn_authenticator import LinkedInAuthenticator
-from linkedIn_bot_facade import LinkedInBotFacade
-from linkedIn_job_manager import LinkedInJobManager
-from resume import Resume
+from src.core.original_files.utils import chromeBrowserOptions
+from src.core.original_files.gpt import GPTAnswerer
+from src.core.original_files.linkedIn_authenticator import LinkedInAuthenticator
+from src.core.original_files.linkedIn_bot_facade import LinkedInBotFacade
+from src.core.original_files.linkedIn_job_manager import LinkedInJobManager
+from src.core.original_files.resume import Resume
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -170,8 +171,8 @@ class FileManager:
 def init_browser():
     try:
         options = chromeBrowserOptions()
-        service = ChromeService(ChromeDriverManager().install())
-        return webdriver.Chrome(service=service, options=options)
+        # service = ChromeService(ChromeDriverManager().install())
+        # return webdriver.Chrome(service=service, options=options)
         return webdriver.Remote(
             command_executor=os.getenv('SELENIUM_REMOTE_URL', 'http://localhost:4444'),
             options=options
@@ -179,11 +180,11 @@ def init_browser():
     except Exception as e:
         raise RuntimeError(f"Failed to initialize browser: {str(e)}")
 
-def create_and_run_bot(email: str, password: str, parameters: dict, openai_api_key: str):
+def create_bot(driver: Any, email: str, password: str, parameters: dict, openai_api_key: str):
     try:
-        browser = init_browser()
-        login_component = LinkedInAuthenticator(browser)
-        apply_component = LinkedInJobManager(browser)
+        # browser = init_browser()
+        login_component = LinkedInAuthenticator(driver)
+        apply_component = LinkedInJobManager(driver)
         gpt_answerer_component = GPTAnswerer(openai_api_key)
         with open(parameters['uploads']['plainTextResume'], "r") as file:
             plain_text_resume_file = file.read()
@@ -193,6 +194,13 @@ def create_and_run_bot(email: str, password: str, parameters: dict, openai_api_k
         bot.set_resume(resume_object)
         bot.set_gpt_answerer(gpt_answerer_component)
         bot.set_parameters(parameters)
+        bot.start_login()
+        bot.start_apply()
+    except Exception as e:
+        raise RuntimeError(f"Error running the bot: {str(e)}")
+    
+def run_bot(bot: LinkedInBotFacade):
+    try:
         bot.start_login()
         bot.start_apply()
     except Exception as e:
@@ -210,7 +218,8 @@ def main(resume: Path = None):
         parameters['uploads'] = FileManager.file_paths_to_dict(resume, plain_text_resume_file)
         parameters['outputFileDirectory'] = output_folder
 
-        create_and_run_bot(email, password, parameters, openai_api_key)
+        bot = create_bot(email, password, parameters, openai_api_key)
+        run_bot(bot)
     except ConfigError as ce:
         print(f"Configuration error: {str(ce)}")
         print("Refer to the configuration guide for troubleshooting: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")

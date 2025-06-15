@@ -28,8 +28,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from xhtml2pdf import pisa
 
-from logger import logger
-import utils    
+from src.core.original_files.logger import logger
+from src.core.original_files import utils    
 
 
 csv_path = os.path.join("data_folder", "output", "old_Questions.csv")

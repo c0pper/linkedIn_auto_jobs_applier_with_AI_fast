@@ -1,15 +1,16 @@
 import csv
 import os
 import random
+from threading import Event
 import time
 import traceback
 from itertools import product
 from pathlib import Path
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
-import utils
-from job import Job
-from linkedIn_easy_applier import LinkedInEasyApplier
+from src.core.original_files import utils
+from src.core.original_files.job import Job
+from src.core.original_files.linkedIn_easy_applier import LinkedInEasyApplier
 
 
 class EnvironmentKeys:
@@ -26,10 +27,12 @@ class EnvironmentKeys:
         return os.getenv(key) == "True"
 
 class LinkedInJobManager:
-    def __init__(self, driver):
+    def __init__(self, driver, stop_event=None):
         self.driver = driver
         self.set_old_answers = set()
         self.easy_applier_component = None
+        self.stop_event = stop_event or Event()  # Use provided event or create new
+        self._should_stop = False  # Additional flag for immediate stopping
 
     def set_parameters(self, parameters):
         self.company_blacklist = parameters.get('companyBlacklist', []) or []
@@ -64,6 +67,16 @@ class LinkedInJobManager:
                         answer_type, question_text, answer = row
                         self.set_old_answers[(answer_type.lower(), question_text.lower())] = answer
 
+    def stop(self):
+        """Immediately stop all job application activities"""
+        self._should_stop = True
+        if self.easy_applier_component:
+            self.easy_applier_component._discard_application()
+        if self.driver:
+            try:
+                self.driver.quit()
+            except:
+                pass
 
     def start_applying(self):
         self.easy_applier_component = LinkedInEasyApplier(
@@ -71,24 +84,47 @@ class LinkedInJobManager:
         )
         searches = list(product(self.positions, self.locations))
         random.shuffle(searches)
+    
+        # Add stop check at the beginning
+        if self.stop_event.is_set():
+            return
+        
         page_sleep = 0
         minimum_time = 3 * 3
         minimum_page_time = time.time() + minimum_time
 
         for position, location in searches:
+            # Add stop check before each new search
+            if self.stop_event.is_set() or self._should_stop:
+                break
+
             location_url = "&location=" + location
             job_page_number = -1
             utils.printyellow(f"Starting the search for {position} in {location}.")
 
             try:
                 while True:
+                    # Add stop check at the start of each page
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
+
                     page_sleep += 1
                     job_page_number += 1
                     utils.printyellow(f"Going to job page {job_page_number}")
+                
+                    # Add stop check before page navigation
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
+
                     self.next_job_page(position, location_url, job_page_number)
                     time.sleep(random.uniform(0.2, 1))
                     utils.printyellow("Starting the application process for this page...")
                     self.apply_jobs()
+                
+                    # Add stop check after applying
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
+
                     utils.printyellow("Applying to jobs on this page has been completed!")
 
                     time_left = minimum_page_time - time.time()
@@ -103,6 +139,8 @@ class LinkedInJobManager:
                         page_sleep += 1
             except Exception:
                 traceback.format_exc()
+                if self.stop_event.is_set() or self._should_stop:
+                    break
                 pass
             time_left = minimum_page_time - time.time()
             if time_left > 0:
@@ -117,20 +155,15 @@ class LinkedInJobManager:
 
     def apply_jobs(self):
         try:
+            # Add stop check
+            if self.stop_event.is_set() or self._should_stop:
+                return
             try:
                 no_jobs_element = self.driver.find_element(By.CLASS_NAME, 'jobs-search-two-pane__no-results-banner--expand')
                 if 'No matching jobs found' in no_jobs_element.text or 'unfortunately, things aren' in self.driver.page_source.lower():
                     raise Exception("No more jobs on this page")
             except NoSuchElementException:
                 pass
-            
-            # job_results = self.driver.find_element(By.CLASS_NAME, "jobs-search-results-list")
-            # job_results = self.driver.find_element(By.CLASS_NAME, "XmiiqsfgkweaCNUMRlQgLIWHNSiBbioBmTA")
-            # utils.scroll_slow(self.driver, job_results)
-            # utils.scroll_slow(self.driver, job_results, step=300, reverse=True)
-            
-            # job_list_elements = self.driver.find_elements(By.CLASS_NAME, 'scaffold-layout__list-container')[0].find_elements(By.CLASS_NAME, 'jobs-search-results__list-item')
-            # job_list_elements = job_results.find_elements(By.CLASS_NAME, "ubwaUEAJBUeMDjavzSkWLzlJNEgXCcRJQCgQA")
 
             job_results = self.driver.find_element(By.CLASS_NAME, "scaffold-layout__list").find_element(By.TAG_NAME, "ul")
 
@@ -154,6 +187,8 @@ class LinkedInJobManager:
                     traceback.print_exc()
             
             for job in job_list:
+                if self.stop_event.is_set() or self._should_stop:
+                    break
                 if self.is_blacklisted(job.title, job.company, job.link):
                     utils.printyellow(f"Blacklisted {job.title} at {job.company}, skipping...")
                     self.write_to_file(job.company, job.location, job.title, job.link, "skipped")
@@ -165,6 +200,8 @@ class LinkedInJobManager:
                 except Exception as e:
                     utils.printred(traceback.format_exc())
                     self.write_to_file(job.company, job.location, job.title, job.link, "failed")
+                    if self.stop_event.is_set() or self._should_stop:
+                        break
                     continue  
                 self.write_to_file(job.company, job.location, job.title, job.link, "success")
         
