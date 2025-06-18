@@ -4,7 +4,7 @@ from loguru import logger
 logs_path = Path(".logs")
 logs_path.mkdir(parents=True, exist_ok=True)
 
-logger.remove() # Remove the default console logger
+# logger.remove() # Remove the default console logger
 logger.add(
     logs_path / "log_{time:YYYY-MM-DD}.log",  # File name with date
     rotation="00:00",                  # Rotate daily at midnight

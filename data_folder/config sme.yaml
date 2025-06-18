@@ -1,0 +1,40 @@
+remote: false
+
+experienceLevel:
+ internship: true
+ entry: true
+ associate: true
+ mid-senior level: true
+ director: true
+ executive: false
+
+jobTypes:
+ full-time: true
+ contract: true
+ part-time: true
+ temporary: true
+ internship: true
+ other: true
+ volunteer: false
+
+date:
+ all time: true
+ month: true
+ week: true
+ 24 hours: true
+
+positions:
+  - Fashion Designer
+
+locations:
+  - Italy
+
+distance: 100
+
+companyBlacklist:
+  - Company1
+  - Company2
+
+titleBlacklist:
+  - word1
+  - word2

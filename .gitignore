@@ -13,3 +13,4 @@ resume.html
 chrome_profile
 data_folder/secrets.yaml
 .logs/
+secrets_sme.yaml

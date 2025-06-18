@@ -421,7 +421,7 @@ Please write the cover letter in a way that directly addresses the job role and 
 - Provide only the text of the cover letter.
 - Do not include any introductions, explanations, or additional information.
 - The letter should be formatted into paragraph.
-- Use the same language as the job description.
+- Use the same language as the job description (if Job description is in Italian, use Italian).
 
 ## Job Description:
 ```
@@ -498,6 +498,7 @@ options_template = """The following is a resume and an answered question about t
 - Never choose the default/placeholder option, examples are: 'Select an option', 'None', 'Choose from the options below', etc.
 - The answer must be one of the options.
 - The answer must exclusively contain one of the options.
+- When in doubt, choose the most accommodating option.
 
 ## Example
 My resume: I'm a software engineer with 10 years of experience on swift, python, C, C++.

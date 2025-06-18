@@ -214,9 +214,9 @@ class GPTAnswerer:
         }
         section_prompt = (
             f"For the following question: '{question}', which section of the resume is relevant? "
-            "Respond with one of the following: Personal information, Self Identification, Legal Authorization, "
+            "Respond EXCLUSIVELY with one of the following: Personal information, Self Identification, Legal Authorization, "
             "Work Preferences, Education Details, Experience Details, Projects, Availability, Salary Expectations, "
-            "Certifications, Languages, Interests, Cover letter"
+            "Certifications, Languages, Interests, Cover letter. If the questions asks for a summary, reply 'Cover letter'.  Do not include any other information apart from the section name."
         )
         prompt = ChatPromptTemplate.from_template(section_prompt)
         chain = prompt | self.llm_cheap | StrOutputParser()
